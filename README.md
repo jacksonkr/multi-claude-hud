@@ -114,9 +114,12 @@ A small **green-dot tray icon** appears — right-click it to toggle click-throu
 | 🔴🟡 **red/yellow**   | Finished, but an attached shell/subprocess is still running |
 | 🔴 **red**    | Idle — finished with no pending question                      |
 
-The "attached subprocess" is detected as a live child process of the Claude
-session (a shell/monitor still running while — or after — Claude's turn). MCP
-servers are excluded, since Claude always keeps those running.
+The "attached subprocess" is meant to be a **navigable background task** (a
+shell/monitor you can open and kill). It's detected as a live child process of
+the Claude session that has been running **longer than ~15s** — so quick
+foreground commands don't trigger it — with MCP servers excluded (Claude always
+keeps those running). It can't perfectly distinguish a backgrounded shell from a
+long-running foreground command, but both are things worth seeing.
 
 Lights are steady; a light flashes once only when its state actually changes.
 Over each **yellow** and **red** light the time-in-state is shown as a single
