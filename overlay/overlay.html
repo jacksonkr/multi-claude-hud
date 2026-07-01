@@ -394,7 +394,7 @@
         chip.appendChild(label);
         chip.appendChild(star);
         app.appendChild(chip);
-        return { chip, light, idle, star, host, proj, color: null, fav: null, idleText: "" };
+        return { chip, light, idle, star, host, proj, color: null, fav: null, idleText: "", idleUnit: "" };
       }
 
       // idleLabel and the sort comparator come from shared.mjs (unit-tested).
@@ -476,14 +476,20 @@
             if (txt !== v.idleText) {
               v.idle.textContent = txt;
               v.idleText = txt;
-              v.idle.animate(
-                [{ opacity: 1 }, { opacity: 0.12 }, { opacity: 1 }],
-                { duration: 220, easing: "ease-out" }
-              );
+              // Flicker only when the unit changes (s→m→h→d…), not every tick.
+              const unit = txt.replace(/[0-9]/g, "");
+              if (unit !== v.idleUnit) {
+                v.idle.animate(
+                  [{ opacity: 1 }, { opacity: 0.12 }, { opacity: 1 }],
+                  { duration: 220, easing: "ease-out" }
+                );
+                v.idleUnit = unit;
+              }
             }
           } else if (v.idleText) {
             v.idle.textContent = "";
             v.idleText = "";
+            v.idleUnit = "";
           }
 
           // Favorite star.
