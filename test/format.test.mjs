@@ -19,12 +19,12 @@ test("idleLabel always uses a single coarse unit (never compound)", () => {
   assert.equal(idleLabel(365 * D), "1y");
 });
 
-test("colorOf: working=green, waiting=yellow, monitoring=split, idle=red", () => {
-  assert.equal(colorOf({ status: "working" }), "green");
+test("colorOf combines status + bg (subprocess = yellow half)", () => {
+  assert.equal(colorOf({ status: "working", bg: false }), "green");
+  assert.equal(colorOf({ status: "working", bg: true }), "split-green"); // working + subproc
   assert.equal(colorOf({ status: "waiting" }), "yellow");
-  assert.equal(colorOf({ status: "monitoring" }), "split");
-  assert.equal(colorOf({ status: "idle" }), "red");
-  assert.equal(colorOf({ status: "whatever" }), "red");
+  assert.equal(colorOf({ status: "idle", bg: true }), "split-red"); // idle + subproc
+  assert.equal(colorOf({ status: "idle", bg: false }), "red");
 });
 
 test("keyOf is stable on host+name; labelOf prefers name then project then host", () => {

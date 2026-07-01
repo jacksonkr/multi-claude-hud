@@ -167,7 +167,8 @@ function applyScan(scan) {
     const id = s.sessionId;
     incoming.add(id);
     const prev = sessions.get(id) || {};
-    const status = statusOf(s.status, s.bg); // working | waiting | monitoring | idle
+    const status = statusOf(s.status); // working | waiting | idle
+    const bg = !!s.bg; // an attached shell/subprocess is still working
     const cwd = s.cwd || prev.cwd || "";
     const record = {
       id,
@@ -178,10 +179,13 @@ function applyScan(scan) {
       name: s.name || prev.name || "",
       platform: scan.platform || prev.platform || "",
       status,
+      bg,
+      // Steady subprocess-start time while it keeps running (for the badge).
+      bgSince: bg ? (prev.bg && prev.bgSince ? prev.bgSince : ts) : null,
       activity:
-        status === "working" ? "working"
+        status === "working" ? (bg ? "working + background task" : "working")
         : status === "waiting" ? "waiting for you"
-        : status === "monitoring" ? "background task running"
+        : bg ? "background task running"
         : "idle",
       source: "scan",
       startedAt: s.startedAt || prev.startedAt || ts,
@@ -197,7 +201,7 @@ function applyScan(scan) {
 
     // Only broadcast when something a viewer cares about actually changed,
     // so steady idle lights don't churn every scan cycle.
-    const sig = `${record.status}|${record.lastWorkingAt}|${record.name}|${record.project}`;
+    const sig = `${record.status}|${record.bg}|${record.lastWorkingAt}|${record.name}|${record.project}`;
     sessions.set(id, record);
     if (sig !== signatures.get(id)) {
       signatures.set(id, sig);

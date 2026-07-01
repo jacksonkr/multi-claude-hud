@@ -158,11 +158,16 @@
         background: var(--red);
         box-shadow: 0 0 9px 1px rgba(255, 59, 48, 0.8);
       }
-      /* Finished, but an attached shell/monitor is still working: a circle
-         split 45° — green on one side, yellow on the other. */
-      .light.split {
+      /* An attached shell/subprocess is running: a circle split 45° — the
+         yellow half signals the subprocess, the other half is Claude's own
+         state (green = working, red = idle/finished). */
+      .light.split-green {
         background: linear-gradient(135deg, var(--green) 0 50%, var(--yellow) 50% 100%);
-        box-shadow: 0 0 9px 1px rgba(150, 190, 60, 0.75);
+        box-shadow: 0 0 9px 1px rgba(150, 190, 60, 0.8);
+      }
+      .light.split-red {
+        background: linear-gradient(135deg, var(--red) 0 50%, var(--yellow) 50% 100%);
+        box-shadow: 0 0 9px 1px rgba(230, 150, 50, 0.8);
       }
 
       /* Idle duration shown centered ON a red light (single coarse unit). */
@@ -184,7 +189,9 @@
         paint-order: stroke fill;
       }
       .light.yellow .idle,
-      .light.red .idle {
+      .light.red .idle,
+      .light.split-green .idle,
+      .light.split-red .idle {
         opacity: 1;
       }
 
@@ -451,7 +458,7 @@
 
           const color = colorFor(s);
           if (color !== v.color) {
-            v.light.classList.remove("green", "yellow", "red", "split");
+            v.light.classList.remove("green", "yellow", "red", "split-green", "split-red");
             v.light.classList.add(color);
             if (v.color !== null) {
               flash(v.light); // flash + (optional) chime on change, not first paint
@@ -460,9 +467,12 @@
             v.color = color;
           }
 
-          // Time-in-state badge shows on yellow (waiting) and red (idle) lights.
-          if (color === "yellow" || color === "red") {
-            const txt = idleLabel(now() - (s.lastWorkingAt || s.startedAt || now()));
+          // Time badge: on yellow/red it's time-in-state; on split lights it's
+          // how long the attached subprocess has been running.
+          const split = color === "split-green" || color === "split-red";
+          if (color === "yellow" || color === "red" || split) {
+            const anchor = split ? s.bgSince || now() : s.lastWorkingAt || s.startedAt || now();
+            const txt = idleLabel(now() - anchor);
             if (txt !== v.idleText) {
               v.idle.textContent = txt;
               v.idleText = txt;

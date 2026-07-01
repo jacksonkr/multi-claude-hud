@@ -102,10 +102,38 @@
       .term .host { color: var(--muted); font-size: 11px; margin-left: auto; }
       .hint { color: var(--muted); font-size: 11px; margin-top: 8px; line-height: 1.5; }
       .empty { color: var(--muted); padding: 10px; text-align: center; }
+      .legend-row { display: flex; align-items: center; gap: 10px; margin: 7px 0; font-size: 12px; }
+      .legend-row .dot { width: 15px; height: 15px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 6px rgba(0,0,0,0.4); }
+      .about { color: var(--muted); font-size: 12px; line-height: 1.6; }
+      .about b { color: var(--text); }
     </style>
   </head>
   <body>
     <h1>Multi-Claude HUD — Settings</h1>
+
+    <div class="group">
+      <div class="title">About &amp; what the lights mean</div>
+      <div class="about">
+        The overlay shows a <b>light per Claude Code terminal</b>. It scans this
+        machine (and any running <b>WSL</b> distros) every few seconds; turn on
+        <b>LAN sharing</b> below — with the same Network key on each device — to
+        see terminals across your machines. A <b>hub</b> is optional (for
+        cross-subnet aggregation and history).
+      </div>
+      <div style="margin-top: 12px">
+        <div class="legend-row"><span class="dot" style="background:#2ecc40"></span> <span><b>Working</b> — actively thinking or running a tool</span></div>
+        <div class="legend-row"><span class="dot" style="background:#ffd21e"></span> <span><b>Waiting on you</b> — needs an answer (a prompt or permission)</span></div>
+        <div class="legend-row"><span class="dot" style="background:linear-gradient(135deg,#2ecc40 0 50%,#ffd21e 50%)"></span> <span><b>Working + subprocess</b> — working and a shell/monitor is running</span></div>
+        <div class="legend-row"><span class="dot" style="background:linear-gradient(135deg,#ff3b30 0 50%,#ffd21e 50%)"></span> <span><b>Done + subprocess</b> — finished, but a shell/monitor is still running</span></div>
+        <div class="legend-row"><span class="dot" style="background:#ff3b30"></span> <span><b>Idle</b> — finished, nothing pending</span></div>
+      </div>
+      <div class="hint">
+        The number over a light shows how long it's been in that state (waiting /
+        idle) or how long the subprocess has been running (split). Favorites (★)
+        pin to the top. Hover the panel to bring it forward; click a light to see
+        behind it; click the “CLAUDE” header to collapse.
+      </div>
+    </div>
 
     <div class="group">
       <div class="title">Appearance</div>

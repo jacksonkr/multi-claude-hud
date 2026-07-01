@@ -2,18 +2,23 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { toRecord, reconcile, removeHost, statusOf } from "../lib/record.mjs";
 
-test("statusOf: busy/waiting/idle, plus monitoring when idle with a bg shell", () => {
+test("statusOf maps busy/waiting/idle to the base status", () => {
   assert.equal(statusOf("busy"), "working");
   assert.equal(statusOf("waiting"), "waiting");
-  assert.equal(statusOf("idle", false), "idle");
-  assert.equal(statusOf("idle", true), "monitoring"); // attached shell working
-  assert.equal(statusOf("busy", true), "working"); // busy wins over bg
+  assert.equal(statusOf("idle"), "idle");
+  assert.equal(statusOf("something"), "idle");
 });
 
-test("toRecord maps an idle-with-bg session to monitoring", () => {
+test("toRecord carries bg separately from status", () => {
   const rec = toRecord({ sessionId: "m", cwd: "/x", status: "idle", bg: true, startedAt: 1 }, { host: "h" }, 100);
-  assert.equal(rec.status, "monitoring");
+  assert.equal(rec.status, "idle");
+  assert.equal(rec.bg, true);
   assert.equal(rec.activity, "background task running");
+
+  const busyBg = toRecord({ sessionId: "n", cwd: "/x", status: "busy", bg: true, startedAt: 1 }, { host: "h" }, 100);
+  assert.equal(busyBg.status, "working");
+  assert.equal(busyBg.bg, true);
+  assert.equal(busyBg.activity, "working + background task");
 });
 
 test("toRecord maps busy/waiting/idle and derives project + lastWorkingAt", () => {

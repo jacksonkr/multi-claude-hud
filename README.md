@@ -110,8 +110,12 @@ A small **green-dot tray icon** appears — right-click it to toggle click-throu
 |-------------|----------------------------------------------------------------|
 | 🟢 **green**  | Actively working (thinking or running a tool)                 |
 | 🟡 **yellow** | Waiting on an answer from you (a prompt or permission)        |
-| 🟢🟡 **split** | Finished, but an attached shell/monitor is still working (a live child process) |
+| 🟢🟡 **green/yellow** | Working **and** an attached shell/subprocess is running |
+| 🔴🟡 **red/yellow**   | Finished, but an attached shell/subprocess is still running |
 | 🔴 **red**    | Idle — finished with no pending question                      |
+
+The "attached subprocess" is detected as a live child process of the Claude
+session (a shell/monitor still running while — or after — Claude's turn).
 
 Lights are steady; a light flashes once only when its state actually changes.
 Over each **yellow** and **red** light the time-in-state is shown as a single
