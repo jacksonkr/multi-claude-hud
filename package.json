@@ -40,7 +40,7 @@
     "dist:publish": "npm run icon && electron-builder --publish always",
     "autostart": "node autostart.mjs",
     "autostart:remove": "node autostart.mjs remove",
-    "test": "node --test \"test/**/*.test.mjs\"",
+    "test": "node scripts/run-tests.mjs",
     "test:watch": "node --test --watch \"test/**/*.test.mjs\"",
     "install-hooks": "node install-hooks.js",
     "uninstall-hooks": "node install-hooks.js --remove"
