@@ -8,6 +8,10 @@ A floating, always-on-top **desktop overlay** showing the live status of every C
 - 🟢 **green** — actively working
 - 🟡 **yellow** — waiting on an answer from you (a prompt/permission)
 - 🔴 **red** — idle / finished with no questions
+- 🟢🟡 / 🔴🟡 **split** — a background task/monitor is running (working, or finished)
+
+Each device runs the overlay; it also scans your **WSL** distros automatically,
+and can **broadcast securely to the LAN** so every device sees the others.
 
 ```
                                           ┌──────────────────┐  ← top-right corner,
