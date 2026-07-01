@@ -158,6 +158,12 @@
         background: var(--red);
         box-shadow: 0 0 9px 1px rgba(255, 59, 48, 0.8);
       }
+      /* Finished, but an attached shell/monitor is still working: a circle
+         split 45° — green on one side, yellow on the other. */
+      .light.split {
+        background: linear-gradient(135deg, var(--green) 0 50%, var(--yellow) 50% 100%);
+        box-shadow: 0 0 9px 1px rgba(150, 190, 60, 0.75);
+      }
 
       /* Idle duration shown centered ON a red light (single coarse unit). */
       .light .idle {
@@ -445,7 +451,7 @@
 
           const color = colorFor(s);
           if (color !== v.color) {
-            v.light.classList.remove("green", "yellow", "red");
+            v.light.classList.remove("green", "yellow", "red", "split");
             v.light.classList.add(color);
             if (v.color !== null) {
               flash(v.light); // flash + (optional) chime on change, not first paint
@@ -454,9 +460,8 @@
             v.color = color;
           }
 
-          // Idle timer: starts when the light goes yellow (idle) and keeps
-          // counting into red. Flicker once on each update.
-          if (color !== "green") {
+          // Time-in-state badge shows on yellow (waiting) and red (idle) lights.
+          if (color === "yellow" || color === "red") {
             const txt = idleLabel(now() - (s.lastWorkingAt || s.startedAt || now()));
             if (txt !== v.idleText) {
               v.idle.textContent = txt;

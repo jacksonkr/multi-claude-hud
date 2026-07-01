@@ -1,6 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toRecord, reconcile, removeHost } from "../lib/record.mjs";
+import { toRecord, reconcile, removeHost, statusOf } from "../lib/record.mjs";
+
+test("statusOf: busy/waiting/idle, plus monitoring when idle with a bg shell", () => {
+  assert.equal(statusOf("busy"), "working");
+  assert.equal(statusOf("waiting"), "waiting");
+  assert.equal(statusOf("idle", false), "idle");
+  assert.equal(statusOf("idle", true), "monitoring"); // attached shell working
+  assert.equal(statusOf("busy", true), "working"); // busy wins over bg
+});
+
+test("toRecord maps an idle-with-bg session to monitoring", () => {
+  const rec = toRecord({ sessionId: "m", cwd: "/x", status: "idle", bg: true, startedAt: 1 }, { host: "h" }, 100);
+  assert.equal(rec.status, "monitoring");
+  assert.equal(rec.activity, "background task running");
+});
 
 test("toRecord maps busy/waiting/idle and derives project + lastWorkingAt", () => {
   const now = 1000;

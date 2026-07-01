@@ -167,7 +167,7 @@ function applyScan(scan) {
     const id = s.sessionId;
     incoming.add(id);
     const prev = sessions.get(id) || {};
-    const status = statusOf(s.status); // working | waiting | idle
+    const status = statusOf(s.status, s.bg); // working | waiting | monitoring | idle
     const cwd = s.cwd || prev.cwd || "";
     const record = {
       id,
@@ -178,7 +178,11 @@ function applyScan(scan) {
       name: s.name || prev.name || "",
       platform: scan.platform || prev.platform || "",
       status,
-      activity: status === "working" ? "working" : status === "waiting" ? "waiting for you" : "idle",
+      activity:
+        status === "working" ? "working"
+        : status === "waiting" ? "waiting for you"
+        : status === "monitoring" ? "background task running"
+        : "idle",
       source: "scan",
       startedAt: s.startedAt || prev.startedAt || ts,
       updatedAt: ts,

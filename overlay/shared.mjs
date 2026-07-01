@@ -6,10 +6,12 @@ export const keyOf = (s) => `${s.host || ""}::${s.name || s.project || ""}`;
 
 export const labelOf = (s) => s.name || s.project || s.host || "claude";
 
-// green = working, yellow = waiting on your answer, red = idle (finished).
+// green = working, yellow = waiting on your answer, split (green/yellow) =
+// finished but an attached shell is still working, red = idle (finished).
 export function colorOf(s) {
   if (s.status === "working") return "green";
   if (s.status === "waiting") return "yellow";
+  if (s.status === "monitoring") return "split";
   return "red";
 }
 

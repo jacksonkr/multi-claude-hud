@@ -19,9 +19,10 @@ test("idleLabel always uses a single coarse unit (never compound)", () => {
   assert.equal(idleLabel(365 * D), "1y");
 });
 
-test("colorOf: green=working, yellow=waiting on you, red=idle/finished", () => {
+test("colorOf: working=green, waiting=yellow, monitoring=split, idle=red", () => {
   assert.equal(colorOf({ status: "working" }), "green");
   assert.equal(colorOf({ status: "waiting" }), "yellow");
+  assert.equal(colorOf({ status: "monitoring" }), "split");
   assert.equal(colorOf({ status: "idle" }), "red");
   assert.equal(colorOf({ status: "whatever" }), "red");
 });

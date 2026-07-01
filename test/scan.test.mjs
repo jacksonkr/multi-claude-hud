@@ -40,3 +40,13 @@ test("works with both Set and Map of live pids", () => {
   assert.equal(filterLiveSessions(files, new Set([100])).length, 1);
   assert.equal(filterLiveSessions(files, new Map([[100, 123]])).length, 1);
 });
+
+test("bg flag reflects child count (Map) and is false for a Set", () => {
+  // Map value = number of child processes.
+  const withKids = filterLiveSessions(files, new Map([[300, 2]]));
+  assert.equal(withKids[0].bg, true);
+  const noKids = filterLiveSessions(files, new Map([[300, 0]]));
+  assert.equal(noKids[0].bg, false);
+  // A plain Set carries no child info → bg false.
+  assert.equal(filterLiveSessions(files, new Set([300]))[0].bg, false);
+});

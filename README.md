@@ -110,6 +110,7 @@ A small **green-dot tray icon** appears — right-click it to toggle click-throu
 |-------------|----------------------------------------------------------------|
 | 🟢 **green**  | Actively working (thinking or running a tool)                 |
 | 🟡 **yellow** | Waiting on an answer from you (a prompt or permission)        |
+| 🟢🟡 **split** | Finished, but an attached shell/monitor is still working (a live child process) |
 | 🔴 **red**    | Idle — finished with no pending question                      |
 
 Lights are steady; a light flashes once only when its state actually changes.
