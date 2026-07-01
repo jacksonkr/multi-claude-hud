@@ -1,0 +1,48 @@
+appId: com.jacksonrollins.multi-claude-hud
+productName: Multi-Claude HUD
+copyright: Copyright © 2026 Jackson Rollins
+
+# asar:false keeps scan-emit.mjs and lib/ as real files on disk, which the WSL
+# pass-through needs (it runs them with `wsl node <path>` from outside Electron).
+asar: false
+
+directories:
+  output: dist
+  buildResources: build
+
+# The installable app is the overlay (it scans locally + WSL and does LAN
+# sharing on its own). The hub/scanner remain run-from-source for power users.
+files:
+  - overlay/**/*
+  - lib/**/*
+  - scan-emit.mjs
+  - package.json
+
+win:
+  target:
+    - nsis
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Multi-Claude HUD
+
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.developer-tools
+  icon: build/icon.png
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Development
+  maintainer: Jackson Rollins <rollins.jackson@gmail.com>
+  icon: build/icon.png
+
+publish:
+  provider: github

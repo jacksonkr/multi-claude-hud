@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Multi-Claude HUD — Activity</title>
+    <style>
+      :root {
+        --bg: #0e1116;
+        --panel: #161b24;
+        --border: #232b38;
+        --text: #e6edf3;
+        --muted: #8b97a7;
+        --faint: #5a6675;
+        --accent: #2f81f7;
+        --green: #2ecc40;
+        --yellow: #ffd21e;
+        --red: #ff3b30;
+        --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 13px;
+        padding: 16px 18px;
+      }
+      h1 {
+        font-size: 13px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        margin: 0 0 14px;
+        color: var(--muted);
+      }
+      .slider {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+      }
+      .slider .top {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .slider .top .lbl { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; }
+      .slider .top .win { margin-left: auto; font-weight: 700; font-size: 15px; }
+      input[type="range"] { width: 100%; accent-color: var(--accent); }
+      .ticks { display: flex; justify-content: space-between; color: var(--faint); font-size: 10px; margin-top: 4px; }
+
+      .legend { display: flex; gap: 16px; margin-bottom: 12px; color: var(--muted); font-size: 11px; }
+      .legend .k { display: inline-flex; align-items: center; gap: 5px; }
+      .dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+      .dot.g { background: var(--green); }
+      .dot.y { background: var(--yellow); }
+      .dot.r { background: var(--red); }
+
+      .rows { display: flex; flex-direction: column; gap: 10px; }
+      .row { background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; }
+      .row .head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+      .row .name { font-weight: 700; }
+      .row .host { color: var(--faint); font-size: 11px; }
+      .row .alive { margin-left: auto; color: var(--muted); font-size: 11px; }
+      .row .live { color: var(--green); }
+
+      .bar {
+        height: 12px;
+        border-radius: 4px;
+        background: #0a0d12;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        display: flex;
+      }
+      .bar i { height: 100%; display: block; }
+      .bar i.g { background: var(--green); }
+      .bar i.y { background: var(--yellow); }
+      .bar i.r { background: var(--red); }
+      .breakdown { display: flex; gap: 14px; margin-top: 6px; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+      .breakdown b { color: var(--text); font-weight: 600; }
+
+      .empty { color: var(--faint); text-align: center; padding: 40px 0; }
+    </style>
+  </head>
+  <body>
+    <h1>Activity History</h1>
+
+    <div class="slider">
+      <div class="top">
+        <span class="lbl">Show activity from the last</span>
+        <span class="win" id="winLabel">1 hour</span>
+      </div>
+      <input id="range" type="range" min="0" max="6" step="1" value="0" />
+      <div class="ticks">
+        <span>1h</span><span>2h</span><span>4h</span><span>8h</span><span>12h</span><span>24h</span><span>48h</span>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="k"><span class="dot g"></span> working</span>
+      <span class="k"><span class="dot y"></span> idle</span>
+      <span class="k"><span class="dot r"></span> idle &gt; threshold</span>
+    </div>
+
+    <div class="rows" id="rows"><div class="empty">Loading…</div></div>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const HUB = params.get("hub") || "http://localhost:4500";
+      let redMs = Number(params.get("redMs")) || 5 * 60_000;
+
+      const H = 60 * 60_000;
+      const STOPS = [
+        { label: "1 hour", ms: 1 * H },
+        { label: "2 hours", ms: 2 * H },
+        { label: "4 hours", ms: 4 * H },
+        { label: "8 hours", ms: 8 * H },
+        { label: "12 hours", ms: 12 * H },
+        { label: "24 hours", ms: 24 * H },
+        { label: "48 hours", ms: 48 * H },
+      ];
+      let stop = 0;
+
+      const range = document.getElementById("range");
+      const winLabel = document.getElementById("winLabel");
+      const rowsEl = document.getElementById("rows");
+
+      function fmtDur(ms) {
+        const s = Math.round(ms / 1000);
+        if (s < 60) return s + "s";
+        const m = Math.floor(s / 60);
+        if (m < 60) return m + "m";
+        const h = Math.floor(m / 60);
+        if (h < 24) return h + "h" + (m % 60 ? " " + (m % 60) + "m" : "");
+        const d = Math.floor(h / 24);
+        return d + "d" + (h % 24 ? " " + (h % 24) + "h" : "");
+      }
+
+      function esc(s) {
+        return String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      }
+
+      async function refresh() {
+        const windowMs = STOPS[stop].ms;
+        let data;
+        try {
+          const r = await fetch(`${HUB}/history?windowMs=${windowMs}&redMs=${redMs}`);
+          data = await r.json();
+        } catch {
+          rowsEl.innerHTML = '<div class="empty">Can\'t reach the hub.</div>';
+          return;
+        }
+        const rows = data.rows || [];
+        if (!rows.length) {
+          rowsEl.innerHTML = '<div class="empty">No activity recorded in this window yet.</div>';
+          return;
+        }
+        rowsEl.innerHTML = rows
+          .map((r) => {
+            // Bar widths are proportional to the window, so a terminal alive the
+            // whole window fills the bar; state segments split the filled part.
+            const pct = (v) => (v / windowMs) * 100;
+            const g = pct(r.green),
+              y = pct(r.yellow),
+              rd = pct(r.red);
+            return `
+              <div class="row">
+                <div class="head">
+                  <span class="name">${esc(r.name || "claude")}</span>
+                  <span class="host">${esc(r.host)}</span>
+                  <span class="alive">${r.active ? '<span class="live">● live</span>  ' : ""}alive ${fmtDur(r.alive)}</span>
+                </div>
+                <div class="bar">
+                  <i class="g" style="width:${g}%"></i>
+                  <i class="y" style="width:${y}%"></i>
+                  <i class="r" style="width:${rd}%"></i>
+                </div>
+                <div class="breakdown">
+                  <span><b>${fmtDur(r.green)}</b> working</span>
+                  <span><b>${fmtDur(r.yellow)}</b> idle</span>
+                  <span><b>${fmtDur(r.red)}</b> idle&gt;thr</span>
+                </div>
+              </div>`;
+          })
+          .join("");
+      }
+
+      range.addEventListener("input", () => {
+        stop = Number(range.value);
+        winLabel.textContent = STOPS[stop].label;
+        refresh();
+      });
+
+      // Pick up the live red-threshold from settings if available.
+      if (window.hud) {
+        window.hud.getSettings().then((s) => {
+          if (s && s.redMinutes) redMs = s.redMinutes * 60_000;
+          refresh();
+        });
+        window.hud.onSettings((s) => {
+          if (s && s.redMinutes) redMs = s.redMinutes * 60_000;
+        });
+      }
+
+      winLabel.textContent = STOPS[stop].label;
+      refresh();
+      setInterval(refresh, 4000);
+    </script>
+  </body>
+</html>

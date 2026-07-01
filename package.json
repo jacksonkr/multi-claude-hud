@@ -1,0 +1,56 @@
+{
+  "name": "multi-claude-hud",
+  "version": "1.0.0",
+  "description": "A network HUD showing the live status of every Claude Code terminal across your machines.",
+  "type": "module",
+  "main": "overlay/main.js",
+  "author": "Jackson Rollins <rollins.jackson@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jacksonkr/multi-claude-hud.git"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "hud",
+    "overlay",
+    "electron",
+    "monitoring",
+    "dashboard"
+  ],
+  "files": [
+    "server.js",
+    "scanner.js",
+    "hook-report.js",
+    "install-hooks.js",
+    "lib/",
+    "overlay/",
+    "public/"
+  ],
+  "bin": {
+    "claude-hud": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "hub": "node server.js",
+    "scan": "node scanner.js",
+    "overlay": "electron overlay",
+    "icon": "node overlay/make-icon.mjs",
+    "dist": "npm run icon && electron-builder",
+    "dist:publish": "npm run icon && electron-builder --publish always",
+    "autostart": "node autostart.mjs",
+    "autostart:remove": "node autostart.mjs remove",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "test:watch": "node --test --watch \"test/**/*.test.mjs\"",
+    "install-hooks": "node install-hooks.js",
+    "uninstall-hooks": "node install-hooks.js --remove"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^42.5.1",
+    "electron-builder": "^26.15.3"
+  }
+}

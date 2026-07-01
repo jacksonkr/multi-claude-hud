@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Multi-Claude HUD overlay</title>
+    <style>
+      :root {
+        --green: #2ecc40;
+        --yellow: #ffd21e;
+        --red: #ff3b30;
+        --text: #f2f5f8;
+        --muted: #aeb6c2;
+        --chip: rgba(14, 17, 22, 0.78);
+        --chip-border: rgba(255, 255, 255, 0.08);
+        --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: transparent; /* the window is transparent; only chips paint */
+        overflow: hidden;
+        user-select: none;
+        cursor: default;
+        font-family: var(--mono);
+      }
+      #app {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding: 6px;
+        height: 100%;
+        box-sizing: border-box;
+        transform-origin: top right; /* grow into the window from the corner */
+        transition: transform 0.15s ease, opacity 0.15s ease;
+      }
+      body.left #app { transform-origin: top left; }
+      body.right.bottom #app { transform-origin: bottom right; }
+      body.left.bottom #app { transform-origin: bottom left; }
+
+      /* Zoom the whole panel while the cursor is over it (factor is a setting). */
+      body.hover-opaque.panel-hot #app {
+        transform: scale(var(--hover-zoom, 2));
+      }
+
+      /* After the intercepted click: hide the whole panel so the user can see
+         what's behind it, until the cursor leaves the perimeter. */
+      body.dismissed #app {
+        opacity: 0;
+      }
+
+      /* Collapsed: only the CLAUDE header shows; click it to expand again. */
+      body.collapsed .chip,
+      body.collapsed .empty {
+        display: none;
+      }
+      body.panel-hot .header {
+        cursor: pointer;
+      }
+      body.right #app {
+        align-items: flex-end;
+      }
+      body.left #app {
+        align-items: flex-start;
+      }
+      body.bottom #app {
+        justify-content: flex-end;
+      }
+
+      .header {
+        order: -1; /* always first, regardless of chip ordering */
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 9.5px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: var(--chip);
+        border: 1px solid var(--chip-border);
+        border-radius: 999px;
+        padding: 3px 9px;
+        opacity: var(--ui-op, 0.6);
+        transition: opacity 0.2s ease;
+      }
+      .header .conn {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--muted);
+        transition: background 0.25s;
+      }
+      .header.live .conn {
+        background: var(--green);
+      }
+      .header.down .conn {
+        background: var(--red);
+      }
+
+      .chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 100%;
+        background: var(--chip);
+        border: 1px solid var(--chip-border);
+        border-radius: 999px;
+        padding: 5px 11px 5px 9px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+        /* Per-item opacity so a hovered chip can reach 100% (a window-level
+           opacity would cap every element and CSS couldn't override it). */
+        opacity: var(--ui-op, 0.6);
+        transition: opacity 0.2s ease;
+      }
+      /* When the cursor is anywhere over the panel, the WHOLE panel goes opaque
+         (`.panel-hot` is toggled in JS — CSS :hover doesn't fire on a
+         click-through window). The transitions fade back on mouse-out. */
+      body.hover-opaque.panel-hot .chip,
+      body.hover-opaque.panel-hot .header,
+      body.hover-opaque.panel-hot .empty {
+        opacity: 1;
+      }
+      body.right .chip {
+        flex-direction: row-reverse; /* dot on the right, text flows left */
+        text-align: right;
+      }
+      /* Plays ONCE when a terminal first appears. */
+      .chip.appear {
+        animation: pop 0.22s ease;
+      }
+      @keyframes pop {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+      }
+
+      /* Lights are STEADY — no looping animation. They only flash, once, when
+         their state changes (handled in JS via the Web Animations API). */
+      .light {
+        position: relative;
+        flex: 0 0 auto;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%; /* circle sized to fit the idle number */
+        background: var(--muted);
+        transition: background 0.2s ease, box-shadow 0.2s ease;
+      }
+      .light.green {
+        background: var(--green);
+        box-shadow: 0 0 9px 1px rgba(46, 204, 64, 0.85);
+      }
+      .light.yellow {
+        background: var(--yellow);
+        box-shadow: 0 0 8px 1px rgba(255, 210, 30, 0.7);
+      }
+      .light.red {
+        background: var(--red);
+        box-shadow: 0 0 9px 1px rgba(255, 59, 48, 0.8);
+      }
+
+      /* Idle duration shown centered ON a red light (single coarse unit). */
+      .light .idle {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 13.5px;
+        font-weight: 800;
+        line-height: 1;
+        color: #fff;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        /* Crisp outline (not a drop shadow); paint-order keeps the white fill
+           on top of the stroke so the digits stay bright. */
+        -webkit-text-stroke: 0.8px rgba(0, 0, 0, 0.92);
+        paint-order: stroke fill;
+      }
+      .light.yellow .idle,
+      .light.red .idle {
+        opacity: 1;
+      }
+
+      /* Favorite star (pinned terminals). */
+      .star {
+        flex: 0 0 auto;
+        font-size: 9px;
+        color: var(--yellow);
+        opacity: 0;
+        width: 0;
+        transition: opacity 0.2s;
+      }
+      .chip.fav .star {
+        opacity: 0.95;
+        width: auto;
+      }
+
+      .label {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.15;
+        min-width: 0;
+      }
+      .label .host {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .label .proj {
+        font-size: 9.5px;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .empty {
+        order: 9999;
+        font-size: 10px;
+        color: var(--muted);
+        background: var(--chip);
+        border: 1px solid var(--chip-border);
+        border-radius: 999px;
+        padding: 4px 10px;
+        opacity: var(--ui-op, 0.6);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="hdr" class="header">
+        <span class="conn"></span>
+        <span id="hdrLabel">claude</span>
+        <span id="hdrCount" style="opacity: 0.6"></span>
+      </div>
+    </div>
+    <script type="module">
+      import { keyOf, labelOf, colorOf, idleLabel, sortComparator } from "./shared.mjs";
+
+      const params = new URLSearchParams(location.search);
+      const HUB = params.get("hub") || "http://localhost:4500";
+
+      // Live settings (pushed by the main process; sensible defaults to start).
+      let settings = {
+        opacity: 0.6,
+        hoverOpaque: true,
+        hoverZoom: 200,
+        redMinutes: 5,
+        corner: "top-right",
+        sortMode: "status",
+        soundMode: "off",
+        soundScope: "all",
+        favorites: [],
+      };
+      const applyOpacity = () => {
+        document.documentElement.style.setProperty("--ui-op", settings.opacity);
+        document.body.classList.toggle("hover-opaque", settings.hoverOpaque !== false);
+        document.documentElement.style.setProperty(
+          "--hover-zoom",
+          (settings.hoverZoom || 200) / 100
+        );
+      };
+      applyOpacity();
+
+      const app = document.getElementById("app");
+      const hdr = document.getElementById("hdr");
+      const hdrCount = document.getElementById("hdrCount");
+      const hdrLabel = document.getElementById("hdrLabel");
+
+      const sessions = new Map(); // id -> session record from hub
+      const views = new Map(); // id -> { chip, light, star, host, proj, color, fav }
+      let serverSkew = 0;
+      let connected = false;
+      let emptyEl = null;
+
+      const now = () => Date.now() + serverSkew;
+      const redMs = () => settings.redMinutes * 60_000;
+
+      // keyOf / labelOf come from shared.mjs (also used by the test suite).
+      const isFav = (s) => settings.favorites.includes(keyOf(s));
+
+      function applyCorner(corner) {
+        document.body.classList.remove("left", "right", "bottom");
+        document.body.classList.add(corner.includes("left") ? "left" : "right");
+        if (corner.includes("bottom")) document.body.classList.add("bottom");
+      }
+      applyCorner(settings.corner);
+
+      // colorOf comes from shared.mjs; bind the current time + threshold.
+      const colorFor = (s) => colorOf(s, now(), redMs());
+
+      // One-shot flash, played only when a light's color changes.
+      function flash(light) {
+        light.animate(
+          [
+            { transform: "scale(1)", filter: "brightness(1)" },
+            { transform: "scale(1.7)", filter: "brightness(1.9)", offset: 0.3 },
+            { transform: "scale(1)", filter: "brightness(1)" },
+          ],
+          { duration: 480, easing: "ease-out" }
+        );
+      }
+
+      // --- Alert chime (Web Audio, no asset files) --------------------------
+      let audioCtx = null;
+      function tone(freqs, dur, type = "sine", peak = 0.16) {
+        try {
+          audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === "suspended") audioCtx.resume();
+          const t0 = audioCtx.currentTime;
+          freqs.forEach((f, i) => {
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = f;
+            const start = t0 + i * dur * 0.85;
+            g.gain.setValueAtTime(0.0001, start);
+            g.gain.linearRampToValueAtTime(peak, start + 0.012);
+            g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+            osc.connect(g).connect(audioCtx.destination);
+            osc.start(start);
+            osc.stop(start + dur);
+          });
+        } catch {}
+      }
+      function chimeFor(color) {
+        if (color === "green") tone([660], 0.12); // started working
+        else if (color === "yellow") tone([523, 392], 0.15); // stopped — needs you
+        else if (color === "red") tone([440, 440], 0.16, "triangle", 0.22); // idle too long
+      }
+      // Decide whether a color transition should sound, given the settings.
+      function maybeChime(newColor, isFavorite) {
+        if (settings.soundMode === "off") return;
+        if (settings.soundScope === "favorites" && !isFavorite) return;
+        switch (settings.soundMode) {
+          case "any":
+            return chimeFor(newColor);
+          case "stop":
+            if (newColor === "yellow") return chimeFor("yellow");
+            return;
+          case "red":
+            if (newColor === "red") return chimeFor("red");
+            return;
+          default:
+            return; // off
+        }
+      }
+
+      function makeChip(s) {
+        const chip = document.createElement("div");
+        chip.className = "chip appear";
+        chip.addEventListener("animationend", () => chip.classList.remove("appear"));
+
+        const light = document.createElement("span");
+        light.className = "light";
+        const idle = document.createElement("span");
+        idle.className = "idle";
+        light.appendChild(idle);
+
+        const label = document.createElement("span");
+        label.className = "label";
+        const host = document.createElement("span");
+        host.className = "host";
+        const proj = document.createElement("span");
+        proj.className = "proj";
+        label.appendChild(host);
+        label.appendChild(proj);
+
+        const star = document.createElement("span");
+        star.className = "star";
+        star.textContent = "★";
+
+        // row-reverse handles visual order for right-corner layouts.
+        chip.appendChild(light);
+        chip.appendChild(label);
+        chip.appendChild(star);
+        app.appendChild(chip);
+        return { chip, light, idle, star, host, proj, color: null, fav: null, idleText: "" };
+      }
+
+      // idleLabel and the sort comparator come from shared.mjs (unit-tested).
+      // Favorites pinned on top, each group ordered by the chosen sort mode.
+      function sortedIds() {
+        const cmp = sortComparator(settings.sortMode);
+        const all = [...sessions.values()];
+        const favs = all.filter(isFav).sort(cmp);
+        const rest = all.filter((s) => !isFav(s)).sort(cmp);
+        return [...favs, ...rest].map((s) => s.id);
+      }
+
+      function render() {
+        // Header.
+        hdr.className = "header " + (connected ? "live" : "down");
+        hdrLabel.textContent = connected ? "claude" : "offline";
+        hdrCount.textContent = sessions.size || "";
+
+        // Empty state.
+        if (sessions.size === 0) {
+          if (!emptyEl) {
+            emptyEl = document.createElement("div");
+            emptyEl.className = "empty";
+            emptyEl.textContent = "no sessions";
+            app.appendChild(emptyEl);
+          }
+        } else if (emptyEl) {
+          emptyEl.remove();
+          emptyEl = null;
+        }
+
+        // Remove views for sessions that ended.
+        for (const [id, v] of views) {
+          if (!sessions.has(id)) {
+            v.chip.remove();
+            views.delete(id);
+          }
+        }
+
+        // Create / update a chip per session.
+        const order = sortedIds();
+        for (let i = 0; i < order.length; i++) {
+          const id = order[i];
+          const s = sessions.get(id);
+          let v = views.get(id);
+          if (!v) {
+            v = makeChip(s);
+            views.set(id, v);
+          }
+
+          v.chip.style.order = String(i); // reorder via flexbox, not DOM moves
+          v.chip.title = `${s.host || ""} — ${s.project || ""} (${s.activity || ""})`;
+
+          // Primary label = the session's own name (or project); secondary =
+          // the machine, so several terminals on one box stay distinguishable.
+          const nameText = s.name || s.project || s.host || "claude";
+          const hostText = s.host || "";
+          if (v.host.textContent !== nameText) v.host.textContent = nameText;
+          if (v.proj.textContent !== hostText) v.proj.textContent = hostText;
+          v.proj.style.display = hostText ? "" : "none";
+
+          const color = colorFor(s);
+          if (color !== v.color) {
+            v.light.classList.remove("green", "yellow", "red");
+            v.light.classList.add(color);
+            if (v.color !== null) {
+              flash(v.light); // flash + (optional) chime on change, not first paint
+              maybeChime(color, isFav(s));
+            }
+            v.color = color;
+          }
+
+          // Idle timer: starts when the light goes yellow (idle) and keeps
+          // counting into red. Flicker once on each update.
+          if (color !== "green") {
+            const txt = idleLabel(now() - (s.lastWorkingAt || s.startedAt || now()));
+            if (txt !== v.idleText) {
+              v.idle.textContent = txt;
+              v.idleText = txt;
+              v.idle.animate(
+                [{ opacity: 1 }, { opacity: 0.12 }, { opacity: 1 }],
+                { duration: 220, easing: "ease-out" }
+              );
+            }
+          } else if (v.idleText) {
+            v.idle.textContent = "";
+            v.idleText = "";
+          }
+
+          // Favorite star.
+          const fav = isFav(s);
+          if (fav !== v.fav) {
+            v.chip.classList.toggle("fav", fav);
+            v.fav = fav;
+          }
+        }
+
+        pushSessions();
+        if (window.__recomputeContentBox) window.__recomputeContentBox();
+      }
+
+      // Send the current terminal list up to the main process (for the tray's
+      // Favorites submenu and the settings window). Only when it changes.
+      let lastSig = "";
+      function pushSessions() {
+        if (!window.hud) return;
+        const list = [...sessions.values()].map((s) => ({
+          key: keyOf(s),
+          name: labelOf(s),
+          host: s.host || "",
+        }));
+        // de-dupe by key, keep order
+        const seen = new Set();
+        const uniq = list.filter((x) => (seen.has(x.key) ? false : seen.add(x.key)));
+        const sig = uniq.map((x) => x.key).join("|");
+        if (sig === lastSig) return;
+        lastSig = sig;
+        window.hud.sendSessions(uniq);
+      }
+
+      // Tick once a second so the time-based yellow → red switch happens on
+      // schedule. render() only flashes lights whose color actually changed,
+      // so a steady idle light stays steady.
+      setInterval(render, 1000);
+
+      // Apply a session message from any source (hub SSE or the local/LAN
+      // engine over IPC). Both use the same {type, …} shapes.
+      let lastDataAt = 0;
+      function applyMessage(msg) {
+        if (!msg) return;
+        if (msg.now) serverSkew = msg.now - Date.now();
+        if (msg.type === "snapshot") {
+          // Only the hub clears + replaces; IPC sends incremental updates.
+          sessions.clear();
+          for (const s of msg.sessions) sessions.set(s.id, s);
+        } else if (msg.type === "update") {
+          sessions.set(msg.session.id, msg.session);
+        } else if (msg.type === "remove") {
+          sessions.delete(msg.id);
+        }
+        lastDataAt = Date.now();
+        connected = true;
+        render();
+      }
+
+      // Local + LAN sessions pushed by the main process.
+      if (window.hud && window.hud.onData) window.hud.onData(applyMessage);
+
+      function connect() {
+        const es = new EventSource(new URL("/events", HUB).href);
+        es.onopen = () => {
+          connected = true;
+          render();
+        };
+        es.onerror = () => {
+          // Stay "live" if the local/LAN engine is still feeding us.
+          if (Date.now() - lastDataAt > 8000) connected = false;
+          render();
+        };
+        es.onmessage = (e) => {
+          try {
+            applyMessage(JSON.parse(e.data));
+          } catch {}
+        };
+      }
+
+      // Receive live settings from the tray / settings window.
+      function applySettings(s) {
+        if (!s) return;
+        const cornerChanged = s.corner && s.corner !== settings.corner;
+        settings = { ...settings, ...s };
+        if (cornerChanged) applyCorner(settings.corner);
+        applyOpacity();
+        render();
+      }
+
+      if (window.hud) {
+        window.hud.getSettings().then(applySettings);
+        window.hud.onSettings(applySettings);
+      }
+
+      // Manual hover detection. The overlay window is permanently click-through
+      // (setIgnoreMouseEvents with forward:true), which delivers mousemove but
+      // does NOT drive the CSS :hover state. So we hit-test the chip under the
+      // cursor ourselves and toggle `.hovered`. Clicks still pass straight
+      // through to whatever is underneath.
+      // --- Perimeter hover + click-to-reveal --------------------------------
+      // Normally the overlay is click-through. When the cursor enters a
+      // perimeter around the panel, the WHOLE panel becomes opaque and the
+      // window temporarily captures the mouse, so the next click is intercepted
+      // (it does not leak to whatever is behind). That click "dismisses" the
+      // panel: it goes fully transparent and click-through resumes, letting the
+      // user see and click what's behind — until the cursor leaves the
+      // perimeter, at which point everything resets.
+      const PERIM = 18; // px buffer around the visible panel
+      let contentBox = null;
+      let inPerim = false;
+      let dismissed = false;
+
+      function recomputeContentBox() {
+        let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity, any = false;
+        for (const el of document.querySelectorAll(".header, .chip, .empty")) {
+          const cr = el.getBoundingClientRect();
+          if (cr.width === 0 && cr.height === 0) continue;
+          any = true;
+          l = Math.min(l, cr.left);
+          t = Math.min(t, cr.top);
+          r = Math.max(r, cr.right);
+          b = Math.max(b, cr.bottom);
+        }
+        contentBox = any ? { l, t, r, b } : null;
+      }
+      window.__recomputeContentBox = recomputeContentBox; // called after render()
+
+      function withinPerim(x, y) {
+        if (!contentBox) return false;
+        return (
+          x >= contentBox.l - PERIM &&
+          x <= contentBox.r + PERIM &&
+          y >= contentBox.t - PERIM &&
+          y <= contentBox.b + PERIM
+        );
+      }
+
+      let collapsed = false;
+      function applyCollapsed() {
+        document.body.classList.toggle("collapsed", collapsed);
+        if (window.__recomputeContentBox) window.__recomputeContentBox();
+      }
+
+      function applyHoverState() {
+        document.body.classList.toggle("panel-hot", inPerim && !dismissed);
+        document.body.classList.toggle("dismissed", inPerim && dismissed);
+      }
+
+      function setClickThrough(on) {
+        if (window.hud && window.hud.setClickThrough) window.hud.setClickThrough(on);
+      }
+
+      function setPerim(on) {
+        if (on === inPerim) return;
+        inPerim = on;
+        if (!on) dismissed = false; // re-arm when the cursor leaves
+        // Capture the mouse only while opaque-and-not-yet-dismissed, so the
+        // dismiss click is intercepted rather than passing through.
+        setClickThrough(!(inPerim && !dismissed));
+        applyHoverState();
+      }
+
+      window.addEventListener("mousedown", (e) => {
+        if (!(inPerim && !dismissed)) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Clicking the CLAUDE header collapses/expands the list and stays
+        // interactive (so it can be toggled back).
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        if (el && el.closest(".header")) {
+          collapsed = !collapsed;
+          applyCollapsed();
+          return;
+        }
+
+        // Any other click: swallow the whole click (down + up), hide the panel,
+        // then let subsequent clicks pass through to what's behind.
+        dismissed = true;
+        applyHoverState();
+        const release = () => {
+          clearTimeout(t);
+          window.removeEventListener("mouseup", release, true);
+          setClickThrough(true);
+        };
+        const t = setTimeout(release, 400); // safety if mouseup is missed
+        window.addEventListener("mouseup", release, true);
+      });
+
+      if (window.hud && window.hud.onCursor) {
+        window.hud.onCursor((pt) => {
+          if (settings.hoverOpaque === false) return setPerim(false);
+          // Recompute against the current (possibly 2×-scaled) panel so the hot
+          // zone matches what's actually drawn.
+          recomputeContentBox();
+          setPerim(!!(pt && withinPerim(pt.x, pt.y)));
+        });
+      }
+
+      render();
+      connect();
+    </script>
+  </body>
+</html>

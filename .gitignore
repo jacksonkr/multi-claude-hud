@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/icon.png
+hud.config.json
+history.jsonl
+hud-settings.json
+*.hud-backup
+*.log
+coverage/
+.env
+.env.*
+.DS_Store
+Thumbs.db

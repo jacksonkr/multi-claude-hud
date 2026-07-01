@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Multi-Claude HUD — Settings</title>
+    <style>
+      :root {
+        --bg: #0e1116;
+        --panel: #161b24;
+        --border: #232b38;
+        --text: #e6edf3;
+        --muted: #8b97a7;
+        --accent: #2f81f7;
+        --green: #2ecc40;
+        --yellow: #ffd21e;
+        --red: #ff3b30;
+        --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 13px;
+        padding: 18px;
+      }
+      h1 {
+        font-size: 13px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        margin: 0 0 16px;
+        color: var(--muted);
+      }
+      .group {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 14px;
+      }
+      .group > .title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 10px 0;
+      }
+      .row label.lbl { width: 96px; flex: 0 0 auto; color: var(--muted); }
+      input[type="range"] { flex: 1; accent-color: var(--accent); }
+      input[type="number"] {
+        width: 70px;
+        background: #0c0f14;
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 5px 7px;
+        font-family: var(--mono);
+      }
+      select {
+        flex: 1;
+        background: #0c0f14;
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 8px;
+        font-family: var(--mono);
+      }
+      .val { width: 46px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+      .sorts { display: flex; flex-direction: column; gap: 8px; }
+      .sorts label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+      .sorts input { accent-color: var(--accent); }
+      label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+      label.check input { accent-color: var(--accent); }
+
+      .terminals { display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow: auto; }
+      .term {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 9px;
+        background: #0c0f14;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .term .star {
+        cursor: pointer;
+        font-size: 15px;
+        color: #44505f;
+        user-select: none;
+        transition: color 0.15s, transform 0.1s;
+      }
+      .term .star:hover { transform: scale(1.15); }
+      .term.fav .star { color: var(--yellow); }
+      .term .name { font-weight: 700; }
+      .term .host { color: var(--muted); font-size: 11px; margin-left: auto; }
+      .hint { color: var(--muted); font-size: 11px; margin-top: 8px; line-height: 1.5; }
+      .empty { color: var(--muted); padding: 10px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <h1>Multi-Claude HUD — Settings</h1>
+
+    <div class="group">
+      <div class="title">Appearance</div>
+      <div class="row">
+        <label class="lbl">Opacity</label>
+        <input id="opacity" type="range" min="10" max="100" step="5" />
+        <span class="val" id="opacityVal">60%</span>
+      </div>
+      <div class="row">
+        <label class="lbl">Corner</label>
+        <select id="corner">
+          <option value="top-right">Top right</option>
+          <option value="top-left">Top left</option>
+          <option value="bottom-right">Bottom right</option>
+          <option value="bottom-left">Bottom left</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="lbl">Red after</label>
+        <input id="redMinutes" type="number" min="0.1" max="120" step="0.5" />
+        <span style="color: var(--muted)">min idle</span>
+      </div>
+      <div class="row">
+        <label class="check"><input id="hoverOpaque" type="checkbox" /> Opaque on mouse-over</label>
+      </div>
+      <div class="row">
+        <label class="lbl">Hover zoom</label>
+        <input id="hoverZoom" type="range" min="100" max="300" step="10" />
+        <span class="val" id="hoverZoomVal">200%</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="title">Alerts</div>
+      <div class="row">
+        <label class="lbl">Sound on</label>
+        <select id="soundMode">
+          <option value="off">Off</option>
+          <option value="any">Any color change</option>
+          <option value="stop">A terminal stops (→ idle)</option>
+          <option value="red">Idle too long (→ red)</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="lbl">Sound for</label>
+        <select id="soundScope">
+          <option value="all">All terminals</option>
+          <option value="favorites">Favorites only (★)</option>
+        </select>
+      </div>
+      <div class="hint">A short chime plays in the overlay when a light changes. Distinct tones for working / idle / red.</div>
+    </div>
+
+    <div class="group">
+      <div class="title">Sort terminals (non-favorites)</div>
+      <div class="sorts" id="sorts">
+        <label><input type="radio" name="sort" value="status" /> Status (working first)</label>
+        <label><input type="radio" name="sort" value="alpha" /> Name (A–Z)</label>
+        <label><input type="radio" name="sort" value="lifetime" /> Lifetime (oldest first)</label>
+        <label><input type="radio" name="sort" value="recent" /> Last active</label>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="title">LAN sharing (secure, opt-in)</div>
+      <div class="row">
+        <label class="check"><input id="lanBroadcast" type="checkbox" /> Broadcast my terminals to this LAN</label>
+      </div>
+      <div class="row">
+        <label class="check"><input id="lanListen" type="checkbox" /> Show terminals other devices broadcast</label>
+      </div>
+      <div class="row">
+        <label class="lbl">Network key</label>
+        <input id="lanKey" type="password" placeholder="same passphrase on every device" style="flex:1;background:#0c0f14;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-family:var(--mono)" />
+      </div>
+      <div class="hint">
+        Traffic is encrypted (AES-256-GCM) with a key derived from this
+        passphrase — set the <b>same</b> key on every device. Broadcasting only
+        starts once a key is set. Nothing leaves this machine unless you tick
+        “Broadcast”. Keep it to a trusted LAN.
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="title">Favorites (pinned to top)</div>
+      <div class="terminals" id="terminals"><div class="empty">No terminals reporting.</div></div>
+      <div class="hint">★ a terminal to pin it above the rest. Favorites are remembered by machine + name, so they persist across restarts.</div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, corner: "top-right", redMinutes: 5, sortMode: "status", soundMode: "off", soundScope: "all", favorites: [], lanBroadcast: false, lanListen: true, lanKey: "" };
+      let sessions = [];
+
+      function keyFav(k) {
+        const set = new Set(settings.favorites);
+        set.has(k) ? set.delete(k) : set.add(k);
+        settings.favorites = [...set];
+        window.hud.update({ favorites: settings.favorites });
+        renderTerminals();
+      }
+
+      function renderControls() {
+        $("opacity").value = Math.round(settings.opacity * 100);
+        $("opacityVal").textContent = Math.round(settings.opacity * 100) + "%";
+        $("corner").value = settings.corner;
+        $("redMinutes").value = settings.redMinutes;
+        $("hoverOpaque").checked = settings.hoverOpaque !== false;
+        $("hoverZoom").value = settings.hoverZoom || 200;
+        $("hoverZoomVal").textContent = (settings.hoverZoom || 200) + "%";
+        $("lanBroadcast").checked = !!settings.lanBroadcast;
+        $("lanListen").checked = settings.lanListen !== false;
+        if (document.activeElement !== $("lanKey")) $("lanKey").value = settings.lanKey || "";
+        for (const r of document.querySelectorAll('input[name="sort"]'))
+          r.checked = r.value === settings.sortMode;
+        $("soundMode").value = settings.soundMode || "off";
+        $("soundScope").value = settings.soundScope || "all";
+      }
+
+      function renderTerminals() {
+        const box = $("terminals");
+        if (!sessions.length) {
+          box.innerHTML = '<div class="empty">No terminals reporting.</div>';
+          return;
+        }
+        const favs = new Set(settings.favorites);
+        box.innerHTML = "";
+        for (const s of sessions) {
+          const el = document.createElement("div");
+          el.className = "term" + (favs.has(s.key) ? " fav" : "");
+          const star = document.createElement("span");
+          star.className = "star";
+          star.textContent = favs.has(s.key) ? "★" : "☆";
+          star.title = "Pin to top";
+          star.onclick = () => keyFav(s.key);
+          const name = document.createElement("span");
+          name.className = "name";
+          name.textContent = s.name;
+          const host = document.createElement("span");
+          host.className = "host";
+          host.textContent = s.host;
+          el.appendChild(star);
+          el.appendChild(name);
+          el.appendChild(host);
+          box.appendChild(el);
+        }
+      }
+
+      // Control events.
+      $("opacity").addEventListener("input", (e) => {
+        const v = Number(e.target.value);
+        $("opacityVal").textContent = v + "%";
+        settings.opacity = v / 100;
+        window.hud.update({ opacity: settings.opacity });
+      });
+      $("corner").addEventListener("change", (e) => {
+        settings.corner = e.target.value;
+        window.hud.update({ corner: settings.corner });
+      });
+      $("redMinutes").addEventListener("change", (e) => {
+        settings.redMinutes = Number(e.target.value) || 5;
+        window.hud.update({ redMinutes: settings.redMinutes });
+      });
+      $("hoverOpaque").addEventListener("change", (e) => {
+        settings.hoverOpaque = e.target.checked;
+        window.hud.update({ hoverOpaque: settings.hoverOpaque });
+      });
+      $("soundMode").addEventListener("change", (e) =>
+        window.hud.update({ soundMode: e.target.value })
+      );
+      $("soundScope").addEventListener("change", (e) =>
+        window.hud.update({ soundScope: e.target.value })
+      );
+      $("hoverZoom").addEventListener("input", (e) => {
+        const v = Number(e.target.value);
+        $("hoverZoomVal").textContent = v + "%";
+        settings.hoverZoom = v;
+        window.hud.update({ hoverZoom: v });
+      });
+      $("lanBroadcast").addEventListener("change", (e) =>
+        window.hud.update({ lanBroadcast: e.target.checked })
+      );
+      $("lanListen").addEventListener("change", (e) =>
+        window.hud.update({ lanListen: e.target.checked })
+      );
+      $("lanKey").addEventListener("change", (e) =>
+        window.hud.update({ lanKey: e.target.value })
+      );
+      for (const r of document.querySelectorAll('input[name="sort"]')) {
+        r.addEventListener("change", () => {
+          if (r.checked) {
+            settings.sortMode = r.value;
+            window.hud.update({ sortMode: r.value });
+          }
+        });
+      }
+
+      // Live data from main.
+      window.hud.onSettings((s) => {
+        settings = { ...settings, ...s };
+        renderControls();
+        renderTerminals();
+      });
+      window.hud.onSessions((list) => {
+        sessions = Array.isArray(list) ? list : [];
+        renderTerminals();
+      });
+      window.hud.getSettings().then((s) => {
+        settings = { ...settings, ...s };
+        renderControls();
+        renderTerminals();
+      });
+    </script>
+  </body>
+</html>

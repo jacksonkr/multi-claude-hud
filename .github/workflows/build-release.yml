@@ -1,0 +1,32 @@
+name: build-release
+
+# Builds installers on every OS and uploads them to the GitHub Release that
+# release-please publishes (matched by version tag). Triggered when a release is
+# published, or manually.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Build & publish installers
+        run: npm run dist:publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Don't attempt macOS code-signing/notarization in CI (no certs).
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"

@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Multi-Claude HUD</title>
+    <style>
+      :root {
+        --bg: #0a0c10;
+        --panel: #12161d;
+        --panel-2: #161b24;
+        --border: #232b38;
+        --text: #e6edf3;
+        --muted: #8b97a7;
+        --faint: #5a6675;
+        --working: #f5a524;
+        --idle: #2f81f7;
+        --attention: #e5484d;
+        --ended: #6e7681;
+        --ok: #3fb950;
+        --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono",
+          Menlo, Consolas, monospace;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body {
+        background: radial-gradient(1200px 600px at 50% -10%, #11161f, var(--bg));
+        color: var(--text);
+        font-family: var(--mono);
+        -webkit-font-smoothing: antialiased;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        background: rgba(10, 12, 16, 0.8);
+        backdrop-filter: blur(8px);
+        z-index: 5;
+      }
+      h1 {
+        font-size: 16px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        margin: 0;
+        font-weight: 700;
+      }
+      h1 .dim { color: var(--faint); font-weight: 500; }
+      .conn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12px;
+        color: var(--muted);
+        padding: 4px 10px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+      }
+      .conn .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--faint);
+        box-shadow: 0 0 0 0 rgba(63,185,80,0.5);
+      }
+      .conn.live .dot { background: var(--ok); animation: pulse 2s infinite; }
+      @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(63,185,80,0.45); }
+        70% { box-shadow: 0 0 0 7px rgba(63,185,80,0); }
+        100% { box-shadow: 0 0 0 0 rgba(63,185,80,0); }
+      }
+      .stats { margin-left: auto; display: flex; gap: 18px; font-size: 12px; color: var(--muted); }
+      .stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+      main {
+        padding: 22px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        background: linear-gradient(180deg, var(--panel-2), var(--panel));
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--ended);
+        border-radius: 12px;
+        padding: 14px 16px;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.3s;
+        animation: rise 0.25s ease;
+      }
+      @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+      .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+      .card.working { border-left-color: var(--working); }
+      .card.idle { border-left-color: var(--idle); }
+      .card.attention { border-left-color: var(--attention); }
+      .card.ended { border-left-color: var(--ended); opacity: 0.55; }
+      .card.stale { opacity: 0.4; filter: saturate(0.4); }
+
+      .card.attention::after {
+        content: "";
+        position: absolute; inset: 0;
+        border-radius: 12px;
+        box-shadow: inset 0 0 40px rgba(229,72,77,0.18);
+        pointer-events: none;
+        animation: glow 1.6s ease-in-out infinite;
+      }
+      @keyframes glow { 50% { box-shadow: inset 0 0 60px rgba(229,72,77,0.32); } }
+
+      .row1 { display: flex; align-items: baseline; gap: 8px; }
+      .host { font-weight: 700; font-size: 15px; }
+      .user { color: var(--faint); font-size: 12px; }
+      .badge {
+        margin-left: auto;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .badge.working { background: rgba(245,165,36,0.15); color: var(--working); }
+      .badge.idle { background: rgba(47,129,247,0.15); color: var(--idle); }
+      .badge.attention { background: rgba(229,72,77,0.18); color: var(--attention); }
+      .badge.ended { background: rgba(110,118,134,0.15); color: var(--ended); }
+
+      .project {
+        margin-top: 8px;
+        font-size: 13px;
+        color: var(--text);
+        display: flex; align-items: center; gap: 6px;
+      }
+      .project .ic { color: var(--faint); }
+      .cwd { color: var(--faint); font-size: 11px; margin-top: 2px; word-break: break-all; }
+
+      .activity {
+        margin-top: 11px;
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--muted);
+        min-height: 19px;
+        border-top: 1px solid var(--border);
+        padding-top: 10px;
+      }
+      .activity .spinner {
+        display: inline-block; margin-right: 6px; color: var(--working);
+      }
+      .working .activity .spinner { animation: spin 1s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      .meta {
+        margin-top: 11px;
+        display: flex; gap: 14px; align-items: center;
+        font-size: 11px; color: var(--faint);
+        font-variant-numeric: tabular-nums;
+      }
+      .meta .ago { margin-left: auto; }
+
+      .empty {
+        grid-column: 1 / -1;
+        text-align: center;
+        color: var(--faint);
+        padding: 80px 20px;
+        font-size: 14px;
+        line-height: 1.8;
+      }
+      .empty code {
+        color: var(--idle);
+        background: var(--panel);
+        padding: 2px 7px;
+        border-radius: 5px;
+        border: 1px solid var(--border);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Multi-Claude <span class="dim">HUD</span></h1>
+      <span id="conn" class="conn"><span class="dot"></span><span id="connText">connecting…</span></span>
+      <div class="stats">
+        <span><b id="cWorking">0</b> working</span>
+        <span><b id="cAttention">0</b> need&nbsp;you</span>
+        <span><b id="cIdle">0</b> idle</span>
+        <span><b id="cTotal">0</b> total</span>
+      </div>
+    </header>
+    <main id="grid"></main>
+
+    <script>
+      const STALE_DEFAULT = 90_000;
+      let staleMs = STALE_DEFAULT;
+      let serverSkew = 0; // serverNow - clientNow, to align timestamps
+      const sessions = new Map();
+
+      const grid = document.getElementById("grid");
+      const conn = document.getElementById("conn");
+      const connText = document.getElementById("connText");
+
+      const statusOrder = { attention: 0, working: 1, idle: 2, ended: 3 };
+      const statusLabel = {
+        working: "working",
+        idle: "idle",
+        attention: "needs you",
+        ended: "ended",
+      };
+
+      function now() { return Date.now() + serverSkew; }
+
+      function ago(ts) {
+        const s = Math.max(0, Math.round((now() - ts) / 1000));
+        if (s < 60) return s + "s ago";
+        const m = Math.floor(s / 60);
+        if (m < 60) return m + "m " + (s % 60) + "s ago";
+        const h = Math.floor(m / 60);
+        return h + "h " + (m % 60) + "m ago";
+      }
+
+      function esc(s) {
+        return String(s ?? "").replace(/[&<>"]/g, (c) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])
+        );
+      }
+
+      function isStale(s) {
+        return s.status !== "ended" && now() - s.updatedAt > staleMs;
+      }
+
+      function render() {
+        const list = [...sessions.values()].sort((a, b) => {
+          const sa = statusOrder[a.status] ?? 9;
+          const sb = statusOrder[b.status] ?? 9;
+          if (sa !== sb) return sa - sb;
+          return b.updatedAt - a.updatedAt;
+        });
+
+        let cW = 0, cA = 0, cI = 0;
+        for (const s of list) {
+          if (isStale(s)) continue;
+          if (s.status === "working") cW++;
+          else if (s.status === "attention") cA++;
+          else if (s.status === "idle") cI++;
+        }
+        document.getElementById("cWorking").textContent = cW;
+        document.getElementById("cAttention").textContent = cA;
+        document.getElementById("cIdle").textContent = cI;
+        document.getElementById("cTotal").textContent = list.length;
+        document.title =
+          (cA ? `(${cA}!) ` : cW ? `(${cW}) ` : "") + "Multi-Claude HUD";
+
+        if (list.length === 0) {
+          grid.innerHTML = `
+            <div class="empty">
+              <div style="font-size:42px;margin-bottom:14px">🛰️</div>
+              No Claude sessions reporting yet.<br/><br/>
+              On each machine, run:<br/>
+              <code>node install-hooks.js --hub ${esc(location.origin)}</code><br/><br/>
+              then start a Claude Code session.
+            </div>`;
+          return;
+        }
+
+        grid.innerHTML = list.map(cardHtml).join("");
+      }
+
+      function cardHtml(s) {
+        const stale = isStale(s);
+        const cls = [s.status, stale ? "stale" : ""].filter(Boolean).join(" ");
+        const spinner =
+          s.status === "working" ? '<span class="spinner">◓</span>' : "";
+        const project = s.project || "(no project)";
+        return `
+          <div class="card ${cls}">
+            <div class="row1">
+              <span class="host">${esc(s.host)}</span>
+              <span class="user">${esc(s.user)}</span>
+              <span class="badge ${s.status}">${stale ? "stale" : statusLabel[s.status] || s.status}</span>
+            </div>
+            <div class="project"><span class="ic">▸</span>${esc(project)}</div>
+            ${s.cwd ? `<div class="cwd">${esc(s.cwd)}</div>` : ""}
+            <div class="activity">${spinner}${esc(s.activity || "")}</div>
+            <div class="meta">
+              ${s.model ? `<span>${esc(s.model)}</span>` : ""}
+              ${s.platform ? `<span>${esc(s.platform)}</span>` : ""}
+              <span class="ago" data-ts="${s.updatedAt}">${ago(s.updatedAt)}</span>
+            </div>
+          </div>`;
+      }
+
+      // Lightweight per-second refresh of "ago" labels + staleness, without a
+      // full re-render unless staleness flipped.
+      setInterval(() => {
+        let needRender = false;
+        for (const s of sessions.values()) {
+          const stale = isStale(s);
+          if (stale !== s._wasStale) { s._wasStale = stale; needRender = true; }
+        }
+        if (needRender) return render();
+        document.querySelectorAll(".ago").forEach((el) => {
+          el.textContent = ago(Number(el.dataset.ts));
+        });
+      }, 1000);
+
+      function connect() {
+        const es = new EventSource("/events");
+        es.onopen = () => {
+          conn.classList.add("live");
+          connText.textContent = "live";
+        };
+        es.onerror = () => {
+          conn.classList.remove("live");
+          connText.textContent = "reconnecting…";
+        };
+        es.onmessage = (e) => {
+          let msg;
+          try { msg = JSON.parse(e.data); } catch { return; }
+          if (msg.now) serverSkew = msg.now - Date.now();
+          if (msg.staleMs) staleMs = msg.staleMs;
+
+          if (msg.type === "snapshot") {
+            sessions.clear();
+            for (const s of msg.sessions) sessions.set(s.id, s);
+          } else if (msg.type === "update") {
+            sessions.set(msg.session.id, msg.session);
+          } else if (msg.type === "remove") {
+            sessions.delete(msg.id);
+          }
+          render();
+        };
+      }
+
+      render();
+      connect();
+    </script>
+  </body>
+</html>

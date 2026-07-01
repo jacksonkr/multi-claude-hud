@@ -1,0 +1,8 @@
+{
+  "name": "multi-claude-hud-overlay",
+  "version": "1.0.0",
+  "description": "Always-on-top desktop overlay of Claude terminal status lights.",
+  "main": "main.js",
+  "type": "commonjs",
+  "private": true
+}
