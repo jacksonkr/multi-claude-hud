@@ -166,11 +166,14 @@
 
     <div class="group">
       <div class="title">Sort terminals (non-favorites)</div>
-      <div class="sorts" id="sorts">
-        <label><input type="radio" name="sort" value="status" /> Status (working first)</label>
-        <label><input type="radio" name="sort" value="alpha" /> Name (A–Z)</label>
-        <label><input type="radio" name="sort" value="lifetime" /> Lifetime (oldest first)</label>
-        <label><input type="radio" name="sort" value="recent" /> Last active</label>
+      <div class="row">
+        <label class="lbl">Sort by</label>
+        <select id="sortMode">
+          <option value="status">Status (working first)</option>
+          <option value="alpha">Name (A–Z)</option>
+          <option value="lifetime">Lifetime (oldest first)</option>
+          <option value="recent">Last active</option>
+        </select>
       </div>
     </div>
 
@@ -224,8 +227,7 @@
         $("lanBroadcast").checked = !!settings.lanBroadcast;
         $("lanListen").checked = settings.lanListen !== false;
         if (document.activeElement !== $("lanKey")) $("lanKey").value = settings.lanKey || "";
-        for (const r of document.querySelectorAll('input[name="sort"]'))
-          r.checked = r.value === settings.sortMode;
+        $("sortMode").value = settings.sortMode || "status";
         $("soundMode").value = settings.soundMode || "off";
         $("soundScope").value = settings.soundScope || "all";
         const sv = settings.soundVolume ?? 100;
@@ -326,14 +328,9 @@
       $("lanKey").addEventListener("change", (e) =>
         window.hud.update({ lanKey: e.target.value })
       );
-      for (const r of document.querySelectorAll('input[name="sort"]')) {
-        r.addEventListener("change", () => {
-          if (r.checked) {
-            settings.sortMode = r.value;
-            window.hud.update({ sortMode: r.value });
-          }
-        });
-      }
+      $("sortMode").addEventListener("change", (e) =>
+        window.hud.update({ sortMode: e.target.value })
+      );
 
       // Live data from main.
       window.hud.onSettings((s) => {
