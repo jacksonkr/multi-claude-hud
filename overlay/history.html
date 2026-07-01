@@ -100,8 +100,8 @@
 
     <div class="legend">
       <span class="k"><span class="dot g"></span> working</span>
-      <span class="k"><span class="dot y"></span> idle</span>
-      <span class="k"><span class="dot r"></span> idle &gt; threshold</span>
+      <span class="k"><span class="dot y"></span> waiting on you</span>
+      <span class="k"><span class="dot r"></span> idle (finished)</span>
     </div>
 
     <div class="rows" id="rows"><div class="empty">Loading…</div></div>
@@ -109,7 +109,6 @@
     <script>
       const params = new URLSearchParams(location.search);
       const HUB = params.get("hub") || "http://localhost:4500";
-      let redMs = Number(params.get("redMs")) || 5 * 60_000;
 
       const H = 60 * 60_000;
       const STOPS = [
@@ -146,7 +145,7 @@
         const windowMs = STOPS[stop].ms;
         let data;
         try {
-          const r = await fetch(`${HUB}/history?windowMs=${windowMs}&redMs=${redMs}`);
+          const r = await fetch(`${HUB}/history?windowMs=${windowMs}`);
           data = await r.json();
         } catch {
           rowsEl.innerHTML = '<div class="empty">Can\'t reach the hub.</div>';
@@ -179,8 +178,8 @@
                 </div>
                 <div class="breakdown">
                   <span><b>${fmtDur(r.green)}</b> working</span>
-                  <span><b>${fmtDur(r.yellow)}</b> idle</span>
-                  <span><b>${fmtDur(r.red)}</b> idle&gt;thr</span>
+                  <span><b>${fmtDur(r.yellow)}</b> waiting</span>
+                  <span><b>${fmtDur(r.red)}</b> idle</span>
                 </div>
               </div>`;
           })
@@ -192,17 +191,6 @@
         winLabel.textContent = STOPS[stop].label;
         refresh();
       });
-
-      // Pick up the live red-threshold from settings if available.
-      if (window.hud) {
-        window.hud.getSettings().then((s) => {
-          if (s && s.redMinutes) redMs = s.redMinutes * 60_000;
-          refresh();
-        });
-        window.hud.onSettings((s) => {
-          if (s && s.redMinutes) redMs = s.redMinutes * 60_000;
-        });
-      }
 
       winLabel.textContent = STOPS[stop].label;
       refresh();

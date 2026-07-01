@@ -6,11 +6,11 @@ export const keyOf = (s) => `${s.host || ""}::${s.name || s.project || ""}`;
 
 export const labelOf = (s) => s.name || s.project || s.host || "claude";
 
-// green = working, yellow = idle < threshold, red = idle ≥ threshold.
-export function colorOf(s, nowMs, redMs) {
+// green = working, yellow = waiting on your answer, red = idle (finished).
+export function colorOf(s) {
   if (s.status === "working") return "green";
-  const since = nowMs - (s.lastWorkingAt || s.startedAt || nowMs);
-  return since >= redMs ? "red" : "yellow";
+  if (s.status === "waiting") return "yellow";
+  return "red";
 }
 
 // Idle duration as a single coarse unit: 10s, 2m, 1h, 1d, 3w, 5mo, 1y.

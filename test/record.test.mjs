@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { toRecord, reconcile, removeHost } from "../lib/record.mjs";
 
-test("toRecord maps busy->working and derives project + lastWorkingAt", () => {
+test("toRecord maps busy/waiting/idle and derives project + lastWorkingAt", () => {
   const now = 1000;
   const work = toRecord({ sessionId: "a", cwd: "/x/api", name: "api", status: "busy", startedAt: 1 }, { host: "h", source: "lan" }, now);
   assert.equal(work.status, "working");
@@ -10,9 +10,13 @@ test("toRecord maps busy->working and derives project + lastWorkingAt", () => {
   assert.equal(work.lastWorkingAt, now); // working -> now
   assert.equal(work.source, "lan");
 
+  const waiting = toRecord({ sessionId: "w", cwd: "/x/api", status: "waiting", startedAt: 1, statusUpdatedAt: 300 }, { host: "h" }, now);
+  assert.equal(waiting.status, "waiting");
+  assert.equal(waiting.lastWorkingAt, 300);
+
   const idle = toRecord({ sessionId: "b", cwd: "/x/web", status: "idle", startedAt: 1, statusUpdatedAt: 500 }, { host: "h" }, now);
   assert.equal(idle.status, "idle");
-  assert.equal(idle.lastWorkingAt, 500); // idle -> when it stopped working
+  assert.equal(idle.lastWorkingAt, 500);
 });
 
 test("reconcile reports adds/changes and removes vanished sessions", () => {

@@ -249,7 +249,6 @@
         opacity: 0.6,
         hoverOpaque: true,
         hoverZoom: 200,
-        redMinutes: 5,
         corner: "top-right",
         sortMode: "status",
         soundMode: "off",
@@ -279,7 +278,6 @@
       let emptyEl = null;
 
       const now = () => Date.now() + serverSkew;
-      const redMs = () => settings.redMinutes * 60_000;
 
       // keyOf / labelOf come from shared.mjs (also used by the test suite).
       const isFav = (s) => settings.favorites.includes(keyOf(s));
@@ -291,8 +289,8 @@
       }
       applyCorner(settings.corner);
 
-      // colorOf comes from shared.mjs; bind the current time + threshold.
-      const colorFor = (s) => colorOf(s, now(), redMs());
+      // colorOf comes from shared.mjs (status-based: working/waiting/idle).
+      const colorFor = (s) => colorOf(s);
 
       // One-shot flash, played only when a light's color changes.
       function flash(light) {
@@ -343,10 +341,10 @@
         switch (settings.soundMode) {
           case "any":
             return chimeFor(newColor);
-          case "stop":
+          case "waiting": // needs your answer
             if (newColor === "yellow") return chimeFor("yellow");
             return;
-          case "red":
+          case "done": // finished
             if (newColor === "red") return chimeFor("red");
             return;
           default:

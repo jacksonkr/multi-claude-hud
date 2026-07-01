@@ -42,9 +42,8 @@ const DEFAULTS = {
   hoverOpaque: true, // lift a chip to 100% while the mouse is over it
   hoverZoom: 200, // how big the panel grows on hover, in percent
   corner: "top-right", // top-right | top-left | bottom-right | bottom-left
-  redMinutes: 5,
   sortMode: "status",
-  soundMode: "off", // off | any | stop (→ idle) | red (→ idle too long)
+  soundMode: "off", // off | any | waiting (→ yellow) | done (→ red)
   soundScope: "all", // all | favorites — which lights may chime
   soundVolume: 100, // chime loudness in percent (0–200)
   favorites: [], // stable keys "host::name"
@@ -83,15 +82,12 @@ function loadSettings() {
   // Env overrides (first run convenience).
   if (process.env.CLAUDE_HUD_OPACITY) settings.opacity = Number(process.env.CLAUDE_HUD_OPACITY);
   if (process.env.CLAUDE_HUD_CORNER) settings.corner = process.env.CLAUDE_HUD_CORNER;
-  if (process.env.CLAUDE_HUD_RED_MS)
-    settings.redMinutes = Number(process.env.CLAUDE_HUD_RED_MS) / 60000;
   clampSettings();
 }
 function clampSettings() {
   settings.opacity = Math.min(1, Math.max(0.1, Number(settings.opacity) || 0.6));
-  settings.redMinutes = Math.min(120, Math.max(0.1, Number(settings.redMinutes) || 5));
   if (!SORT_MODES.includes(settings.sortMode)) settings.sortMode = "status";
-  if (!["off", "any", "stop", "red"].includes(settings.soundMode)) settings.soundMode = "off";
+  if (!["off", "any", "waiting", "done"].includes(settings.soundMode)) settings.soundMode = "off";
   if (!["all", "favorites"].includes(settings.soundScope)) settings.soundScope = "all";
   const vol = Number(settings.soundVolume);
   settings.soundVolume = Number.isFinite(vol) ? Math.min(200, Math.max(0, vol)) : 100;
@@ -305,7 +301,7 @@ function openHistory() {
   });
   historyWin.setMenuBarVisibility(false);
   historyWin.loadFile(path.join(__dirname, "history.html"), {
-    query: { hub: HUB, redMs: String(settings.redMinutes * 60000) },
+    query: { hub: HUB },
   });
   historyWin.once("ready-to-show", () =>
     historyWin.webContents.send("hud:settings", settings)

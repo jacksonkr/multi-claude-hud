@@ -19,12 +19,11 @@ test("idleLabel always uses a single coarse unit (never compound)", () => {
   assert.equal(idleLabel(365 * D), "1y");
 });
 
-test("colorOf: green when working, yellow/red by threshold", () => {
-  const now = 1_000_000;
-  assert.equal(colorOf({ status: "working", lastWorkingAt: now - D }, now, 5 * M), "green");
-  assert.equal(colorOf({ status: "idle", lastWorkingAt: now - 10 * S }, now, 5 * M), "yellow");
-  assert.equal(colorOf({ status: "idle", lastWorkingAt: now - 5 * M + 1 }, now, 5 * M), "yellow");
-  assert.equal(colorOf({ status: "idle", lastWorkingAt: now - 5 * M }, now, 5 * M), "red");
+test("colorOf: green=working, yellow=waiting on you, red=idle/finished", () => {
+  assert.equal(colorOf({ status: "working" }), "green");
+  assert.equal(colorOf({ status: "waiting" }), "yellow");
+  assert.equal(colorOf({ status: "idle" }), "red");
+  assert.equal(colorOf({ status: "whatever" }), "red");
 });
 
 test("keyOf is stable on host+name; labelOf prefers name then project then host", () => {

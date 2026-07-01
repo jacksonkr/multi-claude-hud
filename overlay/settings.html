@@ -124,11 +124,6 @@
         </select>
       </div>
       <div class="row">
-        <label class="lbl">Red after</label>
-        <input id="redMinutes" type="number" min="0.1" max="120" step="0.5" />
-        <span style="color: var(--muted)">min idle</span>
-      </div>
-      <div class="row">
         <label class="check"><input id="hoverOpaque" type="checkbox" /> Opaque on mouse-over</label>
       </div>
       <div class="row">
@@ -145,8 +140,8 @@
         <select id="soundMode">
           <option value="off">Off</option>
           <option value="any">Any color change</option>
-          <option value="stop">A terminal stops (→ idle)</option>
-          <option value="red">Idle too long (→ red)</option>
+          <option value="waiting">Needs your answer (→ yellow)</option>
+          <option value="done">Finished (→ red)</option>
         </select>
       </div>
       <div class="row">
@@ -205,7 +200,7 @@
 
     <script>
       const $ = (id) => document.getElementById(id);
-      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, corner: "top-right", redMinutes: 5, sortMode: "status", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], lanBroadcast: false, lanListen: true, lanKey: "" };
+      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, corner: "top-right", sortMode: "status", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], lanBroadcast: false, lanListen: true, lanKey: "" };
       let sessions = [];
 
       function keyFav(k) {
@@ -220,7 +215,6 @@
         $("opacity").value = Math.round(settings.opacity * 100);
         $("opacityVal").textContent = Math.round(settings.opacity * 100) + "%";
         $("corner").value = settings.corner;
-        $("redMinutes").value = settings.redMinutes;
         $("hoverOpaque").checked = settings.hoverOpaque !== false;
         $("hoverZoom").value = settings.hoverZoom || 200;
         $("hoverZoomVal").textContent = (settings.hoverZoom || 200) + "%";
@@ -274,10 +268,6 @@
       $("corner").addEventListener("change", (e) => {
         settings.corner = e.target.value;
         window.hud.update({ corner: settings.corner });
-      });
-      $("redMinutes").addEventListener("change", (e) => {
-        settings.redMinutes = Number(e.target.value) || 5;
-        window.hud.update({ redMinutes: settings.redMinutes });
       });
       $("hoverOpaque").addEventListener("change", (e) => {
         settings.hoverOpaque = e.target.checked;

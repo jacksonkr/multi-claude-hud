@@ -16,6 +16,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { projectName, deriveStatus, deriveActivity, truncate } from "./lib/derive.mjs";
 import { computeHistory } from "./lib/history.mjs";
+import { statusOf } from "./lib/record.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -166,7 +167,7 @@ function applyScan(scan) {
     const id = s.sessionId;
     incoming.add(id);
     const prev = sessions.get(id) || {};
-    const status = s.status === "busy" ? "working" : "idle";
+    const status = statusOf(s.status); // working | waiting | idle
     const cwd = s.cwd || prev.cwd || "";
     const record = {
       id,
@@ -177,17 +178,17 @@ function applyScan(scan) {
       name: s.name || prev.name || "",
       platform: scan.platform || prev.platform || "",
       status,
-      activity: status === "working" ? "working" : "idle",
+      activity: status === "working" ? "working" : status === "waiting" ? "waiting for you" : "idle",
       source: "scan",
       startedAt: s.startedAt || prev.startedAt || ts,
       updatedAt: ts,
-      // When working, "now"; when idle, the moment it stopped working
-      // (statusUpdatedAt) — drives the green → yellow → red timing.
+      // working → now; otherwise the moment the status last changed (drives the
+      // "how long" badge under the light).
       lastWorkingAt:
         status === "working" ? ts : s.statusUpdatedAt || prev.lastWorkingAt || ts,
     };
 
-    // Record working/idle transitions to the activity history.
+    // Record working/waiting/idle transitions to the activity history.
     logState(id, host, record.name || record.project, status);
 
     // Only broadcast when something a viewer cares about actually changed,
@@ -291,11 +292,10 @@ const server = http.createServer(async (req, res) => {
       HISTORY_KEEP_MS,
       Math.max(60_000, Number(url.searchParams.get("windowMs")) || 60 * 60_000)
     );
-    const redMs = Math.max(1000, Number(url.searchParams.get("redMs")) || 5 * 60_000);
     const activeIds = new Set(sessions.keys());
-    const rows = computeHistory(history, to - windowMs, to, redMs, activeIds);
+    const rows = computeHistory(history, to - windowMs, to, activeIds);
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ now: to, windowMs, redMs, rows }));
+    res.end(JSON.stringify({ now: to, windowMs, rows }));
     return;
   }
 

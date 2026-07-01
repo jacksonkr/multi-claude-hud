@@ -36,19 +36,21 @@ test("scan ingests sessions and /api/state reflects them", async () => {
   await scan([
     { sessionId: "s1", cwd: "/x/api", name: "api", status: "busy", startedAt: 1, statusUpdatedAt: 1 },
     { sessionId: "s2", cwd: "/x/web", name: "web", status: "idle", startedAt: 1, statusUpdatedAt: 1 },
+    { sessionId: "s3", cwd: "/x/cli", name: "cli", status: "waiting", startedAt: 1, statusUpdatedAt: 1 },
   ]);
   const state = await getJson("/api/state");
   const byId = Object.fromEntries(state.sessions.map((s) => [s.id, s]));
-  assert.equal(state.sessions.length, 2);
+  assert.equal(state.sessions.length, 3);
   assert.equal(byId.s1.status, "working"); // busy -> working
   assert.equal(byId.s2.status, "idle");
+  assert.equal(byId.s3.status, "waiting"); // waiting -> waiting (yellow)
   assert.equal(byId.s1.name, "api");
 });
 
 test("/history returns a row per terminal with numeric splits", async () => {
-  const { rows } = await getJson("/history?windowMs=3600000&redMs=300000");
+  const { rows } = await getJson("/history?windowMs=3600000");
   const names = rows.map((r) => r.name).sort();
-  assert.deepEqual(names, ["api", "web"]);
+  assert.deepEqual(names, ["api", "cli", "web"]);
   for (const r of rows) {
     for (const k of ["green", "yellow", "red", "alive"]) {
       assert.ok(Number.isFinite(r[k]) && r[k] >= 0, `${k} should be a non-negative number`);

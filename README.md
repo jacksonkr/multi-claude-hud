@@ -6,8 +6,8 @@
 A floating, always-on-top **desktop overlay** showing the live status of every Claude Code terminal across all your machines (Windows + Mac on the same LAN). It sits in the corner of your primary display at 60% opacity, over the top of whatever you're doing, with **one light per terminal**:
 
 - 🟢 **green** — actively working
-- 🟡 **yellow** — stopped working (idle)
-- 🔴 **red** — stopped for **5 minutes or longer**
+- 🟡 **yellow** — waiting on an answer from you (a prompt/permission)
+- 🔴 **red** — idle / finished with no questions
 
 ```
                                           ┌──────────────────┐  ← top-right corner,
@@ -108,14 +108,14 @@ A small **green-dot tray icon** appears — right-click it to toggle click-throu
 
 | Light       | Meaning                                                        |
 |-------------|----------------------------------------------------------------|
-| 🟢 **green**  | Actively working (thinking or running a tool)                  |
-| 🟡 **yellow** | Stopped working (idle / finished / waiting on you)             |
-| 🔴 **red**    | Hasn't worked for the red threshold (default **5 min**) or longer |
+| 🟢 **green**  | Actively working (thinking or running a tool)                 |
+| 🟡 **yellow** | Waiting on an answer from you (a prompt or permission)        |
+| 🔴 **red**    | Idle — finished with no pending question                      |
 
 Lights are steady; a light flashes once only when its state actually changes.
-Over each **red** light, the idle time is shown as a single coarse unit —
-`10s`, `2m`, `1h`, `1d`, `3w`, `5mo`, `1y` (never compound). A light disappears
-the moment its terminal is closed.
+Over each **yellow** and **red** light the time-in-state is shown as a single
+coarse unit — `10s`, `2m`, `1h`, `1d`, `3w`, `5mo`, `1y` (never compound). A
+light disappears the moment its terminal is closed.
 
 ## The tray menu (quick-launch)
 
@@ -187,14 +187,13 @@ tray/Settings and persisted; the env vars only seed the **first run**:
 - `CLAUDE_HUD_URL` — hub URL to connect to (default `http://localhost:4500`)
 - `CLAUDE_HUD_CORNER` — `top-right` (default), `top-left`, `bottom-right`, `bottom-left`
 - `CLAUDE_HUD_OPACITY` — initial window opacity `0.1`–`1` (default `0.6`)
-- `CLAUDE_HUD_RED_MS` — initial idle time before a light turns red (default `300000` = 5 min)
 
 ## Endpoints
 
 - `GET /` — the optional browser dashboard
 - `GET /events` — SSE live stream (the overlay subscribes here)
 - `GET /api/state` — JSON snapshot of all sessions
-- `GET /history?windowMs=&redMs=` — per-terminal green/yellow/red/alive totals over the window
+- `GET /history?windowMs=` — per-terminal working/waiting/idle/alive totals over the window
 - `POST /scan` — ingest a machine's live-session snapshot (from the scanner)
 - `GET /healthz` — liveness + session count
 
