@@ -156,6 +156,11 @@
           <option value="favorites">Favorites only (★)</option>
         </select>
       </div>
+      <div class="row">
+        <label class="lbl">Volume</label>
+        <input id="soundVolume" type="range" min="0" max="200" step="5" />
+        <span class="val" id="soundVolumeVal">100%</span>
+      </div>
       <div class="hint">A short chime plays in the overlay when a light changes. Distinct tones for working / idle / red.</div>
     </div>
 
@@ -197,7 +202,7 @@
 
     <script>
       const $ = (id) => document.getElementById(id);
-      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, corner: "top-right", redMinutes: 5, sortMode: "status", soundMode: "off", soundScope: "all", favorites: [], lanBroadcast: false, lanListen: true, lanKey: "" };
+      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, corner: "top-right", redMinutes: 5, sortMode: "status", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], lanBroadcast: false, lanListen: true, lanKey: "" };
       let sessions = [];
 
       function keyFav(k) {
@@ -223,6 +228,9 @@
           r.checked = r.value === settings.sortMode;
         $("soundMode").value = settings.soundMode || "off";
         $("soundScope").value = settings.soundScope || "all";
+        const sv = settings.soundVolume ?? 100;
+        $("soundVolume").value = sv;
+        $("soundVolumeVal").textContent = sv + "%";
       }
 
       function renderTerminals() {
@@ -279,6 +287,30 @@
       $("soundScope").addEventListener("change", (e) =>
         window.hud.update({ soundScope: e.target.value })
       );
+      function previewBeep(vol) {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "sine";
+          o.frequency.value = 523;
+          const peak = 0.16 * (vol / 100);
+          const t = ctx.currentTime;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.linearRampToValueAtTime(Math.max(0.0001, peak), t + 0.012);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+          o.connect(g).connect(ctx.destination);
+          o.start(t);
+          o.stop(t + 0.16);
+          setTimeout(() => ctx.close(), 400);
+        } catch {}
+      }
+      $("soundVolume").addEventListener("input", (e) => {
+        const v = Number(e.target.value);
+        $("soundVolumeVal").textContent = v + "%";
+        window.hud.update({ soundVolume: v });
+      });
+      $("soundVolume").addEventListener("change", (e) => previewBeep(Number(e.target.value)));
       $("hoverZoom").addEventListener("input", (e) => {
         const v = Number(e.target.value);
         $("hoverZoomVal").textContent = v + "%";

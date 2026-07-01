@@ -254,6 +254,7 @@
         sortMode: "status",
         soundMode: "off",
         soundScope: "all",
+        soundVolume: 100,
         favorites: [],
       };
       const applyOpacity = () => {
@@ -308,6 +309,9 @@
       // --- Alert chime (Web Audio, no asset files) --------------------------
       let audioCtx = null;
       function tone(freqs, dur, type = "sine", peak = 0.16) {
+        const vol = (settings.soundVolume ?? 100) / 100; // 0–2×
+        const gainPeak = peak * vol;
+        if (gainPeak <= 0) return; // muted
         try {
           audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
           if (audioCtx.state === "suspended") audioCtx.resume();
@@ -319,7 +323,7 @@
             osc.frequency.value = f;
             const start = t0 + i * dur * 0.85;
             g.gain.setValueAtTime(0.0001, start);
-            g.gain.linearRampToValueAtTime(peak, start + 0.012);
+            g.gain.linearRampToValueAtTime(gainPeak, start + 0.012);
             g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
             osc.connect(g).connect(audioCtx.destination);
             osc.start(start);
