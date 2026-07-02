@@ -167,10 +167,10 @@ function createOverlay() {
     resizable: false,
     movable: false,
     skipTaskbar: true,
-    // Focusable so it can capture the "intercept" click when opaque; it still
-    // won't grab focus during normal use because it's click-through then, and
-    // we show it inactive so it never steals focus on launch.
-    focusable: true,
+    // A background overlay: not focusable, so it stays out of the taskbar and
+    // Alt-Tab and never steals focus. It can still receive the intercept click
+    // (mouse events don't require activation).
+    focusable: false,
     show: false,
     icon: appIcon(),
     type: process.platform === "darwin" ? "panel" : undefined,
