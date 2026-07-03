@@ -104,6 +104,11 @@
       .term .hide:hover { opacity: 1; transform: scale(1.15); }
       .term.hidden { opacity: 0.45; }
       .term.hidden .name { text-decoration: line-through; }
+      .term-section { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 12px 0 4px; }
+      .term-section:first-child { margin-top: 0; }
+      .term[draggable="true"] { cursor: grab; }
+      .term.dragging { opacity: 0.4; }
+      .term.drop-target { border-color: var(--accent); box-shadow: 0 -2px 0 var(--accent) inset; }
       .hint { color: var(--muted); font-size: 11px; margin-top: 8px; line-height: 1.5; }
       .empty { color: var(--muted); padding: 10px; text-align: center; }
       .legend-row { display: flex; align-items: center; gap: 10px; margin: 7px 0; font-size: 12px; }
@@ -226,7 +231,7 @@
     <div class="group">
       <div class="title">Terminals</div>
       <div class="terminals" id="terminals"><div class="empty">No terminals reporting.</div></div>
-      <div class="hint">★ pins a terminal to the top · 👁 hides it from the overlay. Terminals with a running shell/monitor group just below favorites. Remembered by machine + name, so they persist across restarts.</div>
+      <div class="hint">★ pins a terminal · 👁 hides it from the overlay · <b>drag favorites to reorder</b>. Terminals with a running shell/monitor group just below favorites. Remembered by machine + name, so they persist across restarts.</div>
     </div>
 
     <script>
@@ -268,40 +273,91 @@
         $("soundVolumeVal").textContent = sv + "%";
       }
 
+      let dragKey = null;
+
+      function sectionHeader(text) {
+        const h = document.createElement("div");
+        h.className = "term-section";
+        h.textContent = text;
+        return h;
+      }
+
+      function attachDrag(el, key) {
+        el.draggable = true;
+        el.addEventListener("dragstart", (e) => {
+          dragKey = key;
+          el.classList.add("dragging");
+          try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", key); } catch {}
+        });
+        el.addEventListener("dragend", () => {
+          dragKey = null;
+          document.querySelectorAll(".term").forEach((x) => x.classList.remove("dragging", "drop-target"));
+        });
+        el.addEventListener("dragover", (e) => { e.preventDefault(); el.classList.add("drop-target"); });
+        el.addEventListener("dragleave", () => el.classList.remove("drop-target"));
+        el.addEventListener("drop", (e) => {
+          e.preventDefault();
+          el.classList.remove("drop-target");
+          if (!dragKey || dragKey === key) return;
+          const arr = (settings.favorites || []).slice();
+          const fi = arr.indexOf(dragKey);
+          if (fi === -1) return;
+          arr.splice(fi, 1);
+          const ti = arr.indexOf(key);
+          arr.splice(ti === -1 ? arr.length : ti, 0, dragKey); // drop before target
+          settings.favorites = arr;
+          window.hud.update({ favorites: arr });
+          renderTerminals();
+        });
+      }
+
+      function makeTermRow(s, favSet, hid, draggable) {
+        const el = document.createElement("div");
+        el.className = "term" + (favSet.has(s.key) ? " fav" : "") + (hid.has(s.key) ? " hidden" : "");
+        const star = document.createElement("span");
+        star.className = "star";
+        star.textContent = favSet.has(s.key) ? "★" : "☆";
+        star.title = "Pin to top";
+        star.onclick = () => keyFav(s.key);
+        const name = document.createElement("span");
+        name.className = "name";
+        name.textContent = s.name;
+        const host = document.createElement("span");
+        host.className = "host";
+        host.textContent = s.host;
+        const hide = document.createElement("span");
+        hide.className = "hide";
+        hide.textContent = hid.has(s.key) ? "🚫" : "👁";
+        hide.title = hid.has(s.key) ? "Hidden — click to show" : "Hide from the overlay";
+        hide.onclick = () => keyHide(s.key);
+        el.appendChild(star);
+        el.appendChild(name);
+        el.appendChild(host);
+        el.appendChild(hide);
+        if (draggable) attachDrag(el, s.key);
+        return el;
+      }
+
       function renderTerminals() {
         const box = $("terminals");
         if (!sessions.length) {
           box.innerHTML = '<div class="empty">No terminals reporting.</div>';
           return;
         }
-        const favs = new Set(settings.favorites);
+        const favSet = new Set(settings.favorites || []);
         const hid = new Set(settings.hidden || []);
+        const byKey = new Map(sessions.map((s) => [s.key, s]));
+        // Favorites shown in their manual (drag) order; only ones reporting now.
+        const favSessions = (settings.favorites || []).map((k) => byKey.get(k)).filter(Boolean);
+        const others = sessions.filter((s) => !favSet.has(s.key));
+
         box.innerHTML = "";
-        for (const s of sessions) {
-          const el = document.createElement("div");
-          el.className = "term" + (favs.has(s.key) ? " fav" : "") + (hid.has(s.key) ? " hidden" : "");
-          const star = document.createElement("span");
-          star.className = "star";
-          star.textContent = favs.has(s.key) ? "★" : "☆";
-          star.title = "Pin to top";
-          star.onclick = () => keyFav(s.key);
-          const name = document.createElement("span");
-          name.className = "name";
-          name.textContent = s.name;
-          const host = document.createElement("span");
-          host.className = "host";
-          host.textContent = s.host;
-          const hide = document.createElement("span");
-          hide.className = "hide";
-          hide.textContent = hid.has(s.key) ? "🚫" : "👁";
-          hide.title = hid.has(s.key) ? "Hidden — click to show" : "Hide from the overlay";
-          hide.onclick = () => keyHide(s.key);
-          el.appendChild(star);
-          el.appendChild(name);
-          el.appendChild(host);
-          el.appendChild(hide);
-          box.appendChild(el);
+        if (favSessions.length) {
+          box.appendChild(sectionHeader("★ Favorites — drag to reorder"));
+          for (const s of favSessions) box.appendChild(makeTermRow(s, favSet, hid, true));
         }
+        box.appendChild(sectionHeader(favSessions.length ? "Other terminals" : "Terminals"));
+        for (const s of others) box.appendChild(makeTermRow(s, favSet, hid, false));
       }
 
       // Control events.

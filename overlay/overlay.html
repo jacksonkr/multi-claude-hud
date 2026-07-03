@@ -399,7 +399,11 @@
       function sortedIds() {
         const cmp = sortComparator(settings.sortMode);
         const all = [...sessions.values()].filter((s) => !isHidden(s));
-        const favs = all.filter(isFav).sort(cmp);
+        const favOrder = settings.favorites || [];
+        // Favorites keep the manual (drag) order set in Settings.
+        const favs = all
+          .filter(isFav)
+          .sort((a, b) => favOrder.indexOf(keyOf(a)) - favOrder.indexOf(keyOf(b)));
         const watched = all.filter((s) => !isFav(s) && s.bg).sort(cmp);
         const rest = all.filter((s) => !isFav(s) && !s.bg).sort(cmp);
         return [...favs, ...watched, ...rest].map((s) => s.id);
