@@ -46,3 +46,6 @@ linux:
 
 publish:
   provider: github
+  # release-please already creates a *published* release; upload into it rather
+  # than electron-builder's default draft (otherwise assets are skipped).
+  releaseType: release
