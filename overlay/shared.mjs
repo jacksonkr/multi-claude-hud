@@ -6,15 +6,14 @@ export const keyOf = (s) => `${s.host || ""}::${s.name || s.project || ""}`;
 
 export const labelOf = (s) => s.name || s.project || s.host || "claude";
 
-// The yellow half means "an attached shell/subprocess is running"; the other
-// half is Claude's own state:
-//   working            → green
-//   working + subproc   → green/yellow split
-//   waiting on you      → yellow
-//   idle + subproc      → red/yellow split
-//   idle (finished)     → red
+//   working (with or without a subprocess) → green
+//   waiting on you                          → yellow
+//   idle, but a subprocess still running    → red/yellow split (+ timer)
+//   idle (finished)                         → red
+// While Claude is working, a running monitor is fine — it stays green. The
+// yellow "there's a task to look at" only appears once Claude is done.
 export function colorOf(s) {
-  if (s.status === "working") return s.bg ? "split-green" : "green";
+  if (s.status === "working") return "green";
   if (s.status === "waiting") return "yellow";
   if (s.bg) return "split-red";
   return "red";

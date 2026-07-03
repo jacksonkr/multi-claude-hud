@@ -19,11 +19,11 @@ test("idleLabel always uses a single coarse unit (never compound)", () => {
   assert.equal(idleLabel(365 * D), "1y");
 });
 
-test("colorOf combines status + bg (subprocess = yellow half)", () => {
+test("colorOf: working stays green even with a subprocess; split only when idle+bg", () => {
   assert.equal(colorOf({ status: "working", bg: false }), "green");
-  assert.equal(colorOf({ status: "working", bg: true }), "split-green"); // working + subproc
+  assert.equal(colorOf({ status: "working", bg: true }), "green"); // working monitor → still green
   assert.equal(colorOf({ status: "waiting" }), "yellow");
-  assert.equal(colorOf({ status: "idle", bg: true }), "split-red"); // idle + subproc
+  assert.equal(colorOf({ status: "idle", bg: true }), "split-red"); // done, task still running
   assert.equal(colorOf({ status: "idle", bg: false }), "red");
 });
 

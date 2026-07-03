@@ -158,13 +158,8 @@
         background: var(--red);
         box-shadow: 0 0 9px 1px rgba(255, 59, 48, 0.8);
       }
-      /* An attached shell/subprocess is running: a circle split 45° — the
-         yellow half signals the subprocess, the other half is Claude's own
-         state (green = working, red = idle/finished). */
-      .light.split-green {
-        background: linear-gradient(135deg, var(--green) 0 50%, var(--yellow) 50% 100%);
-        box-shadow: 0 0 9px 1px rgba(150, 190, 60, 0.8);
-      }
+      /* Claude finished but a shell/subprocess is still running: a circle split
+         45° — red (Claude is done) and yellow (there's a task to look at). */
       .light.split-red {
         background: linear-gradient(135deg, var(--red) 0 50%, var(--yellow) 50% 100%);
         box-shadow: 0 0 9px 1px rgba(230, 150, 50, 0.8);
@@ -190,7 +185,6 @@
       }
       .light.yellow .idle,
       .light.red .idle,
-      .light.split-green .idle,
       .light.split-red .idle {
         opacity: 1;
       }
@@ -469,7 +463,7 @@
 
           // Time badge: on yellow/red it's time-in-state; on split lights it's
           // how long the attached subprocess has been running.
-          const split = color === "split-green" || color === "split-red";
+          const split = color === "split-red";
           if (color === "yellow" || color === "red" || split) {
             const anchor = split ? s.bgSince || now() : s.lastWorkingAt || s.startedAt || now();
             const txt = idleLabel(now() - anchor);
