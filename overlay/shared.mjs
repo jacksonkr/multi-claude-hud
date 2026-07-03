@@ -8,14 +8,14 @@ export const labelOf = (s) => s.name || s.project || s.host || "claude";
 
 //   working (with or without a subprocess) → green
 //   waiting on you                          → yellow
-//   idle, but a subprocess still running    → red/yellow split (+ timer)
+//   idle, but a subprocess still running    → red/green split (+ timer)
 //   idle (finished)                         → red
-// While Claude is working, a running monitor is fine — it stays green. The
-// yellow "there's a task to look at" only appears once Claude is done.
+// The green half of the split = the shell/monitor is still working; the red
+// half = Claude itself is done.
 export function colorOf(s) {
   if (s.status === "working") return "green";
   if (s.status === "waiting") return "yellow";
-  if (s.bg) return "split-red";
+  if (s.bg) return "split";
   return "red";
 }
 

@@ -23,7 +23,7 @@ test("colorOf: working stays green even with a subprocess; split only when idle+
   assert.equal(colorOf({ status: "working", bg: false }), "green");
   assert.equal(colorOf({ status: "working", bg: true }), "green"); // working monitor → still green
   assert.equal(colorOf({ status: "waiting" }), "yellow");
-  assert.equal(colorOf({ status: "idle", bg: true }), "split-red"); // done, task still running
+  assert.equal(colorOf({ status: "idle", bg: true }), "split"); // done, shell still running (red/green)
   assert.equal(colorOf({ status: "idle", bg: false }), "red");
 });
 

@@ -158,11 +158,11 @@
         background: var(--red);
         box-shadow: 0 0 9px 1px rgba(255, 59, 48, 0.8);
       }
-      /* Claude finished but a shell/subprocess is still running: a circle split
-         45° — red (Claude is done) and yellow (there's a task to look at). */
-      .light.split-red {
-        background: linear-gradient(135deg, var(--red) 0 50%, var(--yellow) 50% 100%);
-        box-shadow: 0 0 9px 1px rgba(230, 150, 50, 0.8);
+      /* Claude finished but a shell/subprocess is still working: a circle split
+         45° — red (Claude is done) and green (the shell/monitor is working). */
+      .light.split {
+        background: linear-gradient(135deg, var(--red) 0 50%, var(--green) 50% 100%);
+        box-shadow: 0 0 9px 1px rgba(150, 170, 70, 0.8);
       }
 
       /* Idle duration shown centered ON a red light (single coarse unit). */
@@ -185,7 +185,7 @@
       }
       .light.yellow .idle,
       .light.red .idle,
-      .light.split-red .idle {
+      .light.split .idle {
         opacity: 1;
       }
 
@@ -262,6 +262,7 @@
         soundScope: "all",
         soundVolume: 100,
         favorites: [],
+        hidden: [],
       };
       const applyOpacity = () => {
         document.documentElement.style.setProperty("--ui-op", settings.opacity);
@@ -288,6 +289,7 @@
 
       // keyOf / labelOf come from shared.mjs (also used by the test suite).
       const isFav = (s) => settings.favorites.includes(keyOf(s));
+      const isHidden = (s) => (settings.hidden || []).includes(keyOf(s));
 
       function applyCorner(corner) {
         document.body.classList.remove("left", "right", "bottom");
@@ -391,24 +393,29 @@
         return { chip, light, idle, star, host, proj, color: null, fav: null, idleText: "", idleUnit: "" };
       }
 
-      // idleLabel and the sort comparator come from shared.mjs (unit-tested).
-      // Favorites pinned on top, each group ordered by the chosen sort mode.
+      // Order: favorites, then "watched" (a shell/monitor is running), then the
+      // rest — each group ordered by the chosen sort mode. Hidden terminals are
+      // dropped entirely.
       function sortedIds() {
         const cmp = sortComparator(settings.sortMode);
-        const all = [...sessions.values()];
+        const all = [...sessions.values()].filter((s) => !isHidden(s));
         const favs = all.filter(isFav).sort(cmp);
-        const rest = all.filter((s) => !isFav(s)).sort(cmp);
-        return [...favs, ...rest].map((s) => s.id);
+        const watched = all.filter((s) => !isFav(s) && s.bg).sort(cmp);
+        const rest = all.filter((s) => !isFav(s) && !s.bg).sort(cmp);
+        return [...favs, ...watched, ...rest].map((s) => s.id);
       }
 
       function render() {
+        const order = sortedIds();
+        const shown = new Set(order);
+
         // Header.
         hdr.className = "header " + (connected ? "live" : "down");
         hdrLabel.textContent = connected ? "claude" : "offline";
-        hdrCount.textContent = sessions.size || "";
+        hdrCount.textContent = order.length || "";
 
-        // Empty state.
-        if (sessions.size === 0) {
+        // Empty state (nothing visible after hiding).
+        if (order.length === 0) {
           if (!emptyEl) {
             emptyEl = document.createElement("div");
             emptyEl.className = "empty";
@@ -420,16 +427,15 @@
           emptyEl = null;
         }
 
-        // Remove views for sessions that ended.
+        // Remove views for sessions that ended or are now hidden.
         for (const [id, v] of views) {
-          if (!sessions.has(id)) {
+          if (!shown.has(id)) {
             v.chip.remove();
             views.delete(id);
           }
         }
 
-        // Create / update a chip per session.
-        const order = sortedIds();
+        // Create / update a chip per visible session.
         for (let i = 0; i < order.length; i++) {
           const id = order[i];
           const s = sessions.get(id);
@@ -452,7 +458,7 @@
 
           const color = colorFor(s);
           if (color !== v.color) {
-            v.light.classList.remove("green", "yellow", "red", "split-green", "split-red");
+            v.light.classList.remove("green", "yellow", "red", "split");
             v.light.classList.add(color);
             if (v.color !== null) {
               flash(v.light); // flash + (optional) chime on change, not first paint
@@ -463,7 +469,7 @@
 
           // Time badge: on yellow/red it's time-in-state; on split lights it's
           // how long the attached subprocess has been running.
-          const split = color === "split-red";
+          const split = color === "split";
           if (color === "yellow" || color === "red" || split) {
             const anchor = split ? s.bgSince || now() : s.lastWorkingAt || s.startedAt || now();
             const txt = idleLabel(now() - anchor);

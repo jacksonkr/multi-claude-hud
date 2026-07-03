@@ -46,7 +46,8 @@ const DEFAULTS = {
   soundMode: "off", // off | any | waiting (→ yellow) | done (→ red)
   soundScope: "all", // all | favorites — which lights may chime
   soundVolume: 100, // chime loudness in percent (0–200)
-  favorites: [], // stable keys "host::name"
+  favorites: [], // stable keys "host::name" pinned to the top
+  hidden: [], // stable keys hidden from the overlay
   // LAN sharing (secure, opt-in). Off by default; broadcasting needs a key.
   lanBroadcast: false,
   lanListen: true,
@@ -92,6 +93,7 @@ function clampSettings() {
   const vol = Number(settings.soundVolume);
   settings.soundVolume = Number.isFinite(vol) ? Math.min(200, Math.max(0, vol)) : 100;
   if (!Array.isArray(settings.favorites)) settings.favorites = [];
+  if (!Array.isArray(settings.hidden)) settings.hidden = [];
   settings.hoverOpaque = settings.hoverOpaque !== false;
   settings.hoverZoom = Math.min(400, Math.max(100, Number(settings.hoverZoom) || 200));
   settings.lanBroadcast = !!settings.lanBroadcast;

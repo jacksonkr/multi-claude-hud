@@ -8,7 +8,7 @@ A floating, always-on-top **desktop overlay** showing the live status of every C
 - 🟢 **green** — actively working
 - 🟡 **yellow** — waiting on an answer from you (a prompt/permission)
 - 🔴 **red** — idle / finished with no questions
-- 🔴🟡 **red/yellow** — finished, but a background task/monitor is still running
+- 🔴🟢 **red/green** — finished, but a background task/monitor is still running
 
 Each device runs the overlay; it also scans your **WSL** distros automatically,
 and can **broadcast securely to the LAN** so every device sees the others.
@@ -114,7 +114,7 @@ A small **green-dot tray icon** appears — right-click it to toggle click-throu
 |-------------|----------------------------------------------------------------|
 | 🟢 **green**  | Actively working (incl. with a shell/monitor running)         |
 | 🟡 **yellow** | Waiting on an answer from you (a prompt or permission)        |
-| 🔴🟡 **red/yellow**   | Finished, but an attached shell/subprocess is still running |
+| 🔴🟢 **red/green**    | Finished, but an attached shell/subprocess is still working |
 | 🔴 **red**    | Idle — finished with no pending question                      |
 
 The "attached subprocess" is meant to be a **navigable background task** (a

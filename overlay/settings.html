@@ -100,6 +100,10 @@
       .term.fav .star { color: var(--yellow); }
       .term .name { font-weight: 700; }
       .term .host { color: var(--muted); font-size: 11px; margin-left: auto; }
+      .term .hide { cursor: pointer; font-size: 13px; margin-left: 10px; opacity: 0.6; user-select: none; transition: opacity 0.15s, transform 0.1s; }
+      .term .hide:hover { opacity: 1; transform: scale(1.15); }
+      .term.hidden { opacity: 0.45; }
+      .term.hidden .name { text-decoration: line-through; }
       .hint { color: var(--muted); font-size: 11px; margin-top: 8px; line-height: 1.5; }
       .empty { color: var(--muted); padding: 10px; text-align: center; }
       .legend-row { display: flex; align-items: center; gap: 10px; margin: 7px 0; font-size: 12px; }
@@ -123,7 +127,7 @@
       <div style="margin-top: 12px">
         <div class="legend-row"><span class="dot" style="background:#2ecc40"></span> <span><b>Working</b> — actively thinking or running a tool (incl. a monitor)</span></div>
         <div class="legend-row"><span class="dot" style="background:#ffd21e"></span> <span><b>Waiting on you</b> — needs an answer (a prompt or permission)</span></div>
-        <div class="legend-row"><span class="dot" style="background:linear-gradient(135deg,#ff3b30 0 50%,#ffd21e 50%)"></span> <span><b>Done + subprocess</b> — finished, but a shell/monitor is still running</span></div>
+        <div class="legend-row"><span class="dot" style="background:linear-gradient(135deg,#ff3b30 0 50%,#2ecc40 50%)"></span> <span><b>Done + subprocess</b> — Claude finished (red), but a shell/monitor is still working (green)</span></div>
         <div class="legend-row"><span class="dot" style="background:#ff3b30"></span> <span><b>Idle</b> — finished, nothing pending</span></div>
       </div>
       <div class="hint">
@@ -220,14 +224,14 @@
     </div>
 
     <div class="group">
-      <div class="title">Favorites (pinned to top)</div>
+      <div class="title">Terminals</div>
       <div class="terminals" id="terminals"><div class="empty">No terminals reporting.</div></div>
-      <div class="hint">★ a terminal to pin it above the rest. Favorites are remembered by machine + name, so they persist across restarts.</div>
+      <div class="hint">★ pins a terminal to the top · 👁 hides it from the overlay. Terminals with a running shell/monitor group just below favorites. Remembered by machine + name, so they persist across restarts.</div>
     </div>
 
     <script>
       const $ = (id) => document.getElementById(id);
-      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, corner: "top-right", sortMode: "status", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], lanBroadcast: false, lanListen: true, lanKey: "" };
+      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, corner: "top-right", sortMode: "status", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
       let sessions = [];
 
       function keyFav(k) {
@@ -235,6 +239,14 @@
         set.has(k) ? set.delete(k) : set.add(k);
         settings.favorites = [...set];
         window.hud.update({ favorites: settings.favorites });
+        renderTerminals();
+      }
+
+      function keyHide(k) {
+        const set = new Set(settings.hidden || []);
+        set.has(k) ? set.delete(k) : set.add(k);
+        settings.hidden = [...set];
+        window.hud.update({ hidden: settings.hidden });
         renderTerminals();
       }
 
@@ -263,10 +275,11 @@
           return;
         }
         const favs = new Set(settings.favorites);
+        const hid = new Set(settings.hidden || []);
         box.innerHTML = "";
         for (const s of sessions) {
           const el = document.createElement("div");
-          el.className = "term" + (favs.has(s.key) ? " fav" : "");
+          el.className = "term" + (favs.has(s.key) ? " fav" : "") + (hid.has(s.key) ? " hidden" : "");
           const star = document.createElement("span");
           star.className = "star";
           star.textContent = favs.has(s.key) ? "★" : "☆";
@@ -278,9 +291,15 @@
           const host = document.createElement("span");
           host.className = "host";
           host.textContent = s.host;
+          const hide = document.createElement("span");
+          hide.className = "hide";
+          hide.textContent = hid.has(s.key) ? "🚫" : "👁";
+          hide.title = hid.has(s.key) ? "Hidden — click to show" : "Hide from the overlay";
+          hide.onclick = () => keyHide(s.key);
           el.appendChild(star);
           el.appendChild(name);
           el.appendChild(host);
+          el.appendChild(hide);
           box.appendChild(el);
         }
       }
