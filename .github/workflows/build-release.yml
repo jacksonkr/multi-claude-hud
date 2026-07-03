@@ -1,12 +1,13 @@
 name: build-release
 
 # Builds installers on every OS and uploads them to the GitHub Release that
-# release-please publishes (matched by version tag). Triggered when a release is
-# published, or manually.
+# release-please publishes (matched by version tag). Called automatically by the
+# release-please workflow when it cuts a release, or run manually.
 on:
+  workflow_call:
+  workflow_dispatch:
   release:
     types: [published]
-  workflow_dispatch:
 
 permissions:
   contents: write

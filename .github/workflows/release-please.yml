@@ -11,9 +11,21 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
     steps:
       # Maintains a release PR (version bump + CHANGELOG from Conventional
       # Commits). Merging that PR tags a GitHub Release.
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           release-type: node
+
+  # When a release was just cut, build the installers and upload them to it.
+  # Called in-run (not via the release event) because a GITHUB_TOKEN-created
+  # release can't trigger a separate workflow.
+  build:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    uses: ./.github/workflows/build-release.yml
+    secrets: inherit
