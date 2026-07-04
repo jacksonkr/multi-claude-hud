@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.1](https://github.com/jacksonkr/multi-claude-hud/compare/v1.0.0...v1.0.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* **ci:** ad-hoc sign the macOS app so Apple Silicon can run it ([0cfe9bf](https://github.com/jacksonkr/multi-claude-hud/commit/0cfe9bfad971c4d3974f95924670dbab1a95696a))
+* **ci:** publish installers into the existing release (releaseType: release) ([f215fd6](https://github.com/jacksonkr/multi-claude-hud/commit/f215fd6effd022dbd9a24e5c537dc4739d7579e4))
+* keep the overlay above other always-on-top windows (e.g. 1Password) ([899881b](https://github.com/jacksonkr/multi-claude-hud/commit/899881b99adcd8c8f2a23a95dce01e31a4cde53c))
+
 ## 1.0.0 (2026-07-03)
 
 
