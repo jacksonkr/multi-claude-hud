@@ -33,8 +33,16 @@ and can **broadcast securely to the LAN** so every device sees the others.
 Grab the installer for your OS from the [Releases](https://github.com/jacksonkr/multi-claude-hud/releases) page:
 
 - **Windows** — `Multi-Claude HUD Setup x.y.z.exe` (NSIS installer)
-- **macOS** — `Multi-Claude HUD-x.y.z.dmg` (or the `.zip`)
+- **macOS** — `Multi-Claude HUD-x.y.z-arm64.dmg` (Apple Silicon) or the `.zip`
 - **Linux** — `Multi-Claude HUD-x.y.z.AppImage` (or the `.deb`)
+
+> **The builds are unsigned** (no paid Apple/Windows certificate), so the OS warns on first launch:
+> - **macOS** — if you see *"'Multi-Claude HUD' is damaged and can't be opened"*, that's just Gatekeeper's quarantine on an unsigned download. Drag the app to `/Applications`, then run once in Terminal:
+>   ```bash
+>   xattr -cr "/Applications/Multi-Claude HUD.app"
+>   ```
+>   and open it (right-click → **Open** if it then asks). It isn't actually damaged.
+> - **Windows** — SmartScreen: click **More info → Run anyway**.
 
 The installed app is the **overlay** — it scans this machine (and its WSL
 distros) and does secure LAN sharing on its own, so on a single-network setup
