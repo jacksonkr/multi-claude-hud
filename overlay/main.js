@@ -191,6 +191,8 @@ function createOverlay() {
   win.setOpacity(1);
   win.setIgnoreMouseEvents(clickThrough, { forward: true });
 
+  startKeepOnTop();
+
   if (process.env.CLAUDE_HUD_DEBUG) {
     win.webContents.on("console-message", (_e, _l, msg) => console.log("[overlay]", msg));
     win.webContents.on("render-process-gone", (_e, d) => console.log("[overlay gone]", d.reason));
@@ -213,6 +215,24 @@ function createOverlay() {
   screen.on("display-removed", reposition);
 
   startCursorTracking();
+  startKeepOnTop();
+}
+
+// Some apps (e.g. 1Password) also mark their windows always-on-top; whichever
+// was raised last wins, so they can land above the HUD. Periodically re-assert
+// the top spot so the overlay reclaims it within a second or two. moveTop only
+// changes z-order — it never activates the window or steals focus.
+let keepOnTopTimer = null;
+function startKeepOnTop() {
+  if (keepOnTopTimer) clearInterval(keepOnTopTimer);
+  keepOnTopTimer = setInterval(() => {
+    if (!win || win.isDestroyed() || !win.isVisible()) return;
+    try {
+      win.setAlwaysOnTop(true, "screen-saver");
+      win.moveTop();
+    } catch {}
+  }, 1500);
+  if (keepOnTopTimer.unref) keepOnTopTimer.unref();
 }
 
 // The overlay is permanently click-through, so it can't rely on DOM mouse
