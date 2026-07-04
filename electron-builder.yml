@@ -10,6 +10,9 @@ directories:
   output: dist
   buildResources: build
 
+# Ad-hoc sign the macOS app so Apple Silicon will run it (no paid cert needed).
+afterPack: scripts/afterPack.cjs
+
 # The installable app is the overlay (it scans locally + WSL and does LAN
 # sharing on its own). The hub/scanner remain run-from-source for power users.
 files:
