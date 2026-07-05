@@ -169,10 +169,11 @@ function createOverlay() {
     resizable: false,
     movable: false,
     skipTaskbar: true,
-    // A background overlay: not focusable, so it stays out of the taskbar and
-    // Alt-Tab and never steals focus. It can still receive the intercept click
-    // (mouse events don't require activation).
-    focusable: false,
+    // Windows/Linux: not focusable, so it stays out of the taskbar and Alt-Tab.
+    // On macOS a non-focusable transparent panel can fail to appear at all, so
+    // leave it focusable there — showInactive() + dock.hide() already keep it
+    // from stealing focus or showing in the app switcher.
+    focusable: process.platform !== "darwin",
     show: false,
     icon: appIcon(),
     type: process.platform === "darwin" ? "panel" : undefined,
@@ -348,7 +349,11 @@ function toggleFavorite(key) {
 function buildTray() {
   if (!tray) {
     try {
-      tray = new Tray(trayImage());
+      const img = trayImage();
+      tray = new Tray(img);
+      // If the icon didn't load at runtime, fall back to a text label (macOS)
+      // so the menu-bar item is still visible and clickable.
+      if (img.isEmpty() && process.platform === "darwin") tray.setTitle("HUD");
     } catch {
       return;
     }
