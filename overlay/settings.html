@@ -167,6 +167,14 @@
         </select>
       </div>
       <div class="row">
+        <label class="lbl">Circle alignment</label>
+        <select id="align">
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+          <option value="right">Right</option>
+        </select>
+      </div>
+      <div class="row">
         <label class="check"><input id="hoverOpaque" type="checkbox" /> Opaque on mouse-over</label>
       </div>
       <div class="row">
@@ -243,7 +251,7 @@
 
     <script>
       const $ = (id) => document.getElementById(id);
-      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, hPos: "right", vPos: "top", sortMode: "status", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
+      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, hPos: "right", vPos: "top", align: "right", sortMode: "status", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
       let sessions = [];
 
       function keyFav(k) {
@@ -267,6 +275,7 @@
         $("opacityVal").textContent = Math.round(settings.opacity * 100) + "%";
         $("hPos").value = settings.hPos || "right";
         $("vPos").value = settings.vPos || "top";
+        $("align").value = settings.align || settings.hPos || "right";
         $("hoverOpaque").checked = settings.hoverOpaque !== false;
         $("hoverZoom").value = settings.hoverZoom || 200;
         $("hoverZoomVal").textContent = (settings.hoverZoom || 200) + "%";
@@ -382,6 +391,10 @@
       $("vPos").addEventListener("change", (e) => {
         settings.vPos = e.target.value;
         window.hud.update({ vPos: settings.vPos });
+      });
+      $("align").addEventListener("change", (e) => {
+        settings.align = e.target.value;
+        window.hud.update({ align: settings.align });
       });
       $("hoverOpaque").addEventListener("change", (e) => {
         settings.hoverOpaque = e.target.checked;

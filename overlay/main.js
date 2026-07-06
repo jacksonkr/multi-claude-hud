@@ -43,8 +43,9 @@ const DEFAULTS = {
   opacity: 0.6,
   hoverOpaque: true, // lift a chip to 100% while the mouse is over it
   hoverZoom: 200, // how big the panel grows on hover, in percent
-  hPos: "right", // left | center | right
-  vPos: "top", // top | middle | bottom
+  hPos: "right", // window horizontal placement: left | center | right
+  vPos: "top", // window vertical placement: top | middle | bottom
+  align: "right", // circle/chip alignment within the panel: left | center | right
   sortMode: "status",
   soundMode: "off", // off | any | waiting (→ yellow) | done (→ red)
   soundScope: "all", // all | favorites — which lights may chime
@@ -89,6 +90,8 @@ function loadSettings() {
     saved.hPos = saved.corner.includes("left") ? "left" : "right";
     saved.vPos = saved.corner.includes("bottom") ? "bottom" : "top";
   }
+  // Circle alignment defaults to follow the horizontal placement.
+  if (saved.align === undefined && saved.hPos !== undefined) saved.align = saved.hPos;
   settings = { ...DEFAULTS, ...saved };
   // Env overrides (first run convenience).
   if (process.env.CLAUDE_HUD_OPACITY) settings.opacity = Number(process.env.CLAUDE_HUD_OPACITY);
@@ -109,6 +112,7 @@ function clampSettings() {
   if (!Array.isArray(settings.hidden)) settings.hidden = [];
   if (!H_POS.includes(settings.hPos)) settings.hPos = "right";
   if (!V_POS.includes(settings.vPos)) settings.vPos = "top";
+  if (!H_POS.includes(settings.align)) settings.align = settings.hPos;
   delete settings.corner; // legacy, superseded by hPos/vPos
   settings.hoverOpaque = settings.hoverOpaque !== false;
   settings.hoverZoom = Math.min(400, Math.max(100, Number(settings.hoverZoom) || 200));

@@ -34,10 +34,10 @@
         transform-origin: var(--to-x, right) var(--to-y, top); /* grow from the anchor */
         transition: transform 0.15s ease, opacity 0.15s ease;
       }
-      /* Panel anchor within the transparent window, per placement setting. */
-      body.h-left { --to-x: left; }
-      body.h-center { --to-x: center; }
-      body.h-right { --to-x: right; }
+      /* Zoom origin: X follows circle alignment, Y follows vertical placement. */
+      body.a-left { --to-x: left; }
+      body.a-center { --to-x: center; }
+      body.a-right { --to-x: right; }
       body.v-top { --to-y: top; }
       body.v-middle { --to-y: center; }
       body.v-bottom { --to-y: bottom; }
@@ -61,9 +61,9 @@
       body.panel-hot .header {
         cursor: pointer;
       }
-      body.h-left #app { align-items: flex-start; }
-      body.h-center #app { align-items: center; }
-      body.h-right #app { align-items: flex-end; }
+      body.a-left #app { align-items: flex-start; }
+      body.a-center #app { align-items: center; }
+      body.a-right #app { align-items: flex-end; }
       body.v-top #app { justify-content: flex-start; }
       body.v-middle #app { justify-content: center; }
       body.v-bottom #app { justify-content: flex-end; }
@@ -121,7 +121,7 @@
       body.hover-opaque.panel-hot .empty {
         opacity: 1;
       }
-      body.right .chip {
+      body.a-right .chip {
         flex-direction: row-reverse; /* dot on the right, text flows left */
         text-align: right;
       }
@@ -265,6 +265,7 @@
         hidden: [],
         hPos: "right",
         vPos: "top",
+        align: "right",
       };
       const applyOpacity = () => {
         document.documentElement.style.setProperty("--ui-op", settings.opacity);
@@ -293,12 +294,14 @@
       const isFav = (s) => settings.favorites.includes(keyOf(s));
       const isHidden = (s) => (settings.hidden || []).includes(keyOf(s));
 
-      function applyPlacement(h, v) {
+      // Panel content anchoring: X follows circle alignment, Y follows vertical
+      // placement. (The window's own X/Y position is handled in the main process.)
+      function applyPlacement(align, v) {
         const b = document.body;
-        b.classList.remove("h-left", "h-center", "h-right", "v-top", "v-middle", "v-bottom");
-        b.classList.add("h-" + (h || "right"), "v-" + (v || "top"));
+        b.classList.remove("a-left", "a-center", "a-right", "v-top", "v-middle", "v-bottom");
+        b.classList.add("a-" + (align || "right"), "v-" + (v || "top"));
       }
-      applyPlacement(settings.hPos, settings.vPos);
+      applyPlacement(settings.align, settings.vPos);
 
       // colorOf comes from shared.mjs (status-based: working/waiting/idle).
       const colorFor = (s) => colorOf(s);
@@ -579,9 +582,9 @@
       function applySettings(s) {
         if (!s) return;
         const placeChanged =
-          (s.hPos && s.hPos !== settings.hPos) || (s.vPos && s.vPos !== settings.vPos);
+          (s.align && s.align !== settings.align) || (s.vPos && s.vPos !== settings.vPos);
         settings = { ...settings, ...s };
-        if (placeChanged) applyPlacement(settings.hPos, settings.vPos);
+        if (placeChanged) applyPlacement(settings.align, settings.vPos);
         applyOpacity();
         render();
       }
