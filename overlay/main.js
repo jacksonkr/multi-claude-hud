@@ -29,6 +29,8 @@ let net = null; // LAN/local networking engine (loaded after app ready)
 
 const SETTINGS_PATH = path.join(app.getPath("userData"), "hud-settings.json");
 
+const H_POS = ["left", "center", "right"];
+const V_POS = ["top", "middle", "bottom"];
 const SORT_MODES = ["status", "alpha", "lifetime", "recent"];
 const SORT_LABELS = {
   status: "Status (working first)",
@@ -41,7 +43,8 @@ const DEFAULTS = {
   opacity: 0.6,
   hoverOpaque: true, // lift a chip to 100% while the mouse is over it
   hoverZoom: 200, // how big the panel grows on hover, in percent
-  corner: "top-right", // top-right | top-left | bottom-right | bottom-left
+  hPos: "right", // left | center | right
+  vPos: "top", // top | middle | bottom
   sortMode: "status",
   soundMode: "off", // off | any | waiting (→ yellow) | done (→ red)
   soundScope: "all", // all | favorites — which lights may chime
@@ -75,14 +78,24 @@ const HUB = process.env.CLAUDE_HUD_URL || readHubFromConfig() || "http://localho
 
 let settings = { ...DEFAULTS };
 function loadSettings() {
+  let saved = {};
   try {
-    settings = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(SETTINGS_PATH, "utf8")) };
+    saved = JSON.parse(fs.readFileSync(SETTINGS_PATH, "utf8"));
   } catch {
-    settings = { ...DEFAULTS };
+    saved = {};
   }
+  // Migrate the legacy single `corner` setting to hPos/vPos.
+  if (saved.corner && saved.hPos === undefined && saved.vPos === undefined) {
+    saved.hPos = saved.corner.includes("left") ? "left" : "right";
+    saved.vPos = saved.corner.includes("bottom") ? "bottom" : "top";
+  }
+  settings = { ...DEFAULTS, ...saved };
   // Env overrides (first run convenience).
   if (process.env.CLAUDE_HUD_OPACITY) settings.opacity = Number(process.env.CLAUDE_HUD_OPACITY);
-  if (process.env.CLAUDE_HUD_CORNER) settings.corner = process.env.CLAUDE_HUD_CORNER;
+  if (process.env.CLAUDE_HUD_CORNER) {
+    settings.hPos = process.env.CLAUDE_HUD_CORNER.includes("left") ? "left" : "right";
+    settings.vPos = process.env.CLAUDE_HUD_CORNER.includes("bottom") ? "bottom" : "top";
+  }
   clampSettings();
 }
 function clampSettings() {
@@ -94,6 +107,9 @@ function clampSettings() {
   settings.soundVolume = Number.isFinite(vol) ? Math.min(200, Math.max(0, vol)) : 100;
   if (!Array.isArray(settings.favorites)) settings.favorites = [];
   if (!Array.isArray(settings.hidden)) settings.hidden = [];
+  if (!H_POS.includes(settings.hPos)) settings.hPos = "right";
+  if (!V_POS.includes(settings.vPos)) settings.vPos = "top";
+  delete settings.corner; // legacy, superseded by hPos/vPos
   settings.hoverOpaque = settings.hoverOpaque !== false;
   settings.hoverZoom = Math.min(400, Math.max(100, Number(settings.hoverZoom) || 200));
   settings.lanBroadcast = !!settings.lanBroadcast;
@@ -136,21 +152,16 @@ function appIcon() {
 
 function positionFor(display) {
   const wa = display.workArea;
-  const w = WIN_W, h = WIN_H, margin = WIN_MARGIN, corner = settings.corner;
-  const left = wa.x + margin;
-  const right = wa.x + wa.width - w - margin;
-  const top = wa.y + margin;
-  const bottom = wa.y + wa.height - h - margin;
-  switch (corner) {
-    case "top-left":
-      return { x: left, y: top };
-    case "bottom-left":
-      return { x: left, y: bottom };
-    case "bottom-right":
-      return { x: right, y: bottom };
-    default:
-      return { x: right, y: top };
-  }
+  const w = WIN_W, h = WIN_H, margin = WIN_MARGIN;
+  let x;
+  if (settings.hPos === "left") x = wa.x + margin;
+  else if (settings.hPos === "center") x = wa.x + Math.round((wa.width - w) / 2);
+  else x = wa.x + wa.width - w - margin; // right
+  let y;
+  if (settings.vPos === "top") y = wa.y + margin;
+  else if (settings.vPos === "middle") y = wa.y + Math.round((wa.height - h) / 2);
+  else y = wa.y + wa.height - h - margin; // bottom
+  return { x, y };
 }
 
 function createOverlay() {

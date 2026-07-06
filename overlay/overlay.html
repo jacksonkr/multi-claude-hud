@@ -31,12 +31,16 @@
         padding: 6px;
         height: 100%;
         box-sizing: border-box;
-        transform-origin: top right; /* grow into the window from the corner */
+        transform-origin: var(--to-x, right) var(--to-y, top); /* grow from the anchor */
         transition: transform 0.15s ease, opacity 0.15s ease;
       }
-      body.left #app { transform-origin: top left; }
-      body.right.bottom #app { transform-origin: bottom right; }
-      body.left.bottom #app { transform-origin: bottom left; }
+      /* Panel anchor within the transparent window, per placement setting. */
+      body.h-left { --to-x: left; }
+      body.h-center { --to-x: center; }
+      body.h-right { --to-x: right; }
+      body.v-top { --to-y: top; }
+      body.v-middle { --to-y: center; }
+      body.v-bottom { --to-y: bottom; }
 
       /* Zoom the whole panel while the cursor is over it (factor is a setting). */
       body.hover-opaque.panel-hot #app {
@@ -57,15 +61,12 @@
       body.panel-hot .header {
         cursor: pointer;
       }
-      body.right #app {
-        align-items: flex-end;
-      }
-      body.left #app {
-        align-items: flex-start;
-      }
-      body.bottom #app {
-        justify-content: flex-end;
-      }
+      body.h-left #app { align-items: flex-start; }
+      body.h-center #app { align-items: center; }
+      body.h-right #app { align-items: flex-end; }
+      body.v-top #app { justify-content: flex-start; }
+      body.v-middle #app { justify-content: center; }
+      body.v-bottom #app { justify-content: flex-end; }
 
       .header {
         order: -1; /* always first, regardless of chip ordering */
@@ -256,13 +257,14 @@
         opacity: 0.6,
         hoverOpaque: true,
         hoverZoom: 200,
-        corner: "top-right",
         sortMode: "status",
         soundMode: "off",
         soundScope: "all",
         soundVolume: 100,
         favorites: [],
         hidden: [],
+        hPos: "right",
+        vPos: "top",
       };
       const applyOpacity = () => {
         document.documentElement.style.setProperty("--ui-op", settings.opacity);
@@ -291,12 +293,12 @@
       const isFav = (s) => settings.favorites.includes(keyOf(s));
       const isHidden = (s) => (settings.hidden || []).includes(keyOf(s));
 
-      function applyCorner(corner) {
-        document.body.classList.remove("left", "right", "bottom");
-        document.body.classList.add(corner.includes("left") ? "left" : "right");
-        if (corner.includes("bottom")) document.body.classList.add("bottom");
+      function applyPlacement(h, v) {
+        const b = document.body;
+        b.classList.remove("h-left", "h-center", "h-right", "v-top", "v-middle", "v-bottom");
+        b.classList.add("h-" + (h || "right"), "v-" + (v || "top"));
       }
-      applyCorner(settings.corner);
+      applyPlacement(settings.hPos, settings.vPos);
 
       // colorOf comes from shared.mjs (status-based: working/waiting/idle).
       const colorFor = (s) => colorOf(s);
@@ -576,9 +578,10 @@
       // Receive live settings from the tray / settings window.
       function applySettings(s) {
         if (!s) return;
-        const cornerChanged = s.corner && s.corner !== settings.corner;
+        const placeChanged =
+          (s.hPos && s.hPos !== settings.hPos) || (s.vPos && s.vPos !== settings.vPos);
         settings = { ...settings, ...s };
-        if (cornerChanged) applyCorner(settings.corner);
+        if (placeChanged) applyPlacement(settings.hPos, settings.vPos);
         applyOpacity();
         render();
       }

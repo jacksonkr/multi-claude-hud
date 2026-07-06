@@ -168,7 +168,7 @@ Hover is detected by the main process polling the global cursor position, so it
 works regardless of the click-through window (forwarded DOM hover doesn't). The
 window is kept large and transparent so the 2× zoom never clips.
 
-The **Settings window** gives a live opacity slider, corner picker, red-threshold
+The **Settings window** gives a live opacity slider, horizontal + vertical placement pickers, red-threshold
 minutes, an "opaque on mouse-over" toggle, hover-zoom, sort mode, an **alert
 sound** (a chime when a light changes — off, any change, on-stop, or on-red),
 LAN sharing, and a list of every terminal you can ★ to favorite. All settings

@@ -151,12 +151,19 @@
         <span class="val" id="opacityVal">60%</span>
       </div>
       <div class="row">
-        <label class="lbl">Corner</label>
-        <select id="corner">
-          <option value="top-right">Top right</option>
-          <option value="top-left">Top left</option>
-          <option value="bottom-right">Bottom right</option>
-          <option value="bottom-left">Bottom left</option>
+        <label class="lbl">Horizontal</label>
+        <select id="hPos">
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+          <option value="right">Right</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="lbl">Vertical</label>
+        <select id="vPos">
+          <option value="top">Top</option>
+          <option value="middle">Middle</option>
+          <option value="bottom">Bottom</option>
         </select>
       </div>
       <div class="row">
@@ -236,7 +243,7 @@
 
     <script>
       const $ = (id) => document.getElementById(id);
-      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, corner: "top-right", sortMode: "status", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
+      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, hPos: "right", vPos: "top", sortMode: "status", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
       let sessions = [];
 
       function keyFav(k) {
@@ -258,7 +265,8 @@
       function renderControls() {
         $("opacity").value = Math.round(settings.opacity * 100);
         $("opacityVal").textContent = Math.round(settings.opacity * 100) + "%";
-        $("corner").value = settings.corner;
+        $("hPos").value = settings.hPos || "right";
+        $("vPos").value = settings.vPos || "top";
         $("hoverOpaque").checked = settings.hoverOpaque !== false;
         $("hoverZoom").value = settings.hoverZoom || 200;
         $("hoverZoomVal").textContent = (settings.hoverZoom || 200) + "%";
@@ -367,9 +375,13 @@
         settings.opacity = v / 100;
         window.hud.update({ opacity: settings.opacity });
       });
-      $("corner").addEventListener("change", (e) => {
-        settings.corner = e.target.value;
-        window.hud.update({ corner: settings.corner });
+      $("hPos").addEventListener("change", (e) => {
+        settings.hPos = e.target.value;
+        window.hud.update({ hPos: settings.hPos });
+      });
+      $("vPos").addEventListener("change", (e) => {
+        settings.vPos = e.target.value;
+        window.hud.update({ vPos: settings.vPos });
       });
       $("hoverOpaque").addEventListener("change", (e) => {
         settings.hoverOpaque = e.target.checked;
