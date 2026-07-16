@@ -53,7 +53,8 @@ const SORT_DIR_LABELS = {
 const DEFAULTS = {
   opacity: 0.6,
   hoverOpaque: true, // lift a chip to 100% while the mouse is over it
-  hoverZoom: 200, // how big the panel grows on hover, in percent
+  hoverZoom: 200, // how much the panel grows on hover, relative to its resting size
+  baseScale: 100, // resting size of the panel, in percent (20–200)
   hPos: "right", // window horizontal placement: left | center | right
   vPos: "top", // window vertical placement: top | middle | bottom
   align: "right", // circle/chip alignment within the panel: left | center | right
@@ -134,6 +135,7 @@ function clampSettings() {
   delete settings.corner; // legacy, superseded by hPos/vPos
   settings.hoverOpaque = settings.hoverOpaque !== false;
   settings.hoverZoom = Math.min(400, Math.max(100, Number(settings.hoverZoom) || 200));
+  settings.baseScale = Math.min(200, Math.max(20, Number(settings.baseScale) || 100));
   settings.lanBroadcast = !!settings.lanBroadcast;
   settings.lanListen = settings.lanListen !== false;
   settings.lanKey = String(settings.lanKey || "");

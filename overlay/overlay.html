@@ -33,6 +33,7 @@
         box-sizing: border-box;
         transform-origin: var(--to-x, right) var(--to-y, top); /* grow from the anchor */
         transition: transform 0.15s ease, opacity 0.15s ease;
+        transform: scale(var(--base-scale, 1)); /* resting size (a setting) */
       }
       /* Zoom origin: X follows circle alignment, Y follows vertical placement. */
       body.a-left { --to-x: left; }
@@ -42,9 +43,11 @@
       body.v-middle { --to-y: center; }
       body.v-bottom { --to-y: bottom; }
 
-      /* Zoom the whole panel while the cursor is over it (factor is a setting). */
+      /* Zoom the whole panel while the cursor is over it. --hover-scale is the
+         resting size times the hover factor, so hover always grows the panel by
+         the same multiple whatever its resting size. */
       body.hover-opaque.panel-hot #app {
-        transform: scale(var(--hover-zoom, 2));
+        transform: scale(var(--hover-scale, 2));
       }
 
       /* After the intercepted click: hide the whole panel so the user can see
@@ -257,6 +260,7 @@
         opacity: 0.6,
         hoverOpaque: true,
         hoverZoom: 200,
+        baseScale: 100,
         sortMode: "status",
         sortDir: "desc",
         favManual: false,
@@ -272,9 +276,14 @@
       const applyOpacity = () => {
         document.documentElement.style.setProperty("--ui-op", settings.opacity);
         document.body.classList.toggle("hover-opaque", settings.hoverOpaque !== false);
+        const base = (settings.baseScale || 100) / 100;
+        const hover = (settings.hoverZoom || 200) / 100;
+        document.documentElement.style.setProperty("--base-scale", base);
+        // Hover grows the panel *from* its resting size. Capped so a large
+        // resting size plus a large hover factor can't overflow the window.
         document.documentElement.style.setProperty(
-          "--hover-zoom",
-          (settings.hoverZoom || 200) / 100
+          "--hover-scale",
+          Math.min(base * hover, 4)
         );
       };
       applyOpacity();

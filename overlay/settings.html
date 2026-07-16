@@ -175,6 +175,11 @@
         </select>
       </div>
       <div class="row">
+        <label class="lbl">Size</label>
+        <input id="baseScale" type="range" min="20" max="200" step="5" />
+        <span class="val" id="baseScaleVal">100%</span>
+      </div>
+      <div class="row">
         <label class="check"><input id="hoverOpaque" type="checkbox" /> Opaque on mouse-over</label>
       </div>
       <div class="row">
@@ -182,6 +187,7 @@
         <input id="hoverZoom" type="range" min="100" max="300" step="10" />
         <span class="val" id="hoverZoomVal">200%</span>
       </div>
+      <div class="hint" id="sizeHint"></div>
     </div>
 
     <div class="group">
@@ -271,6 +277,17 @@
         lifetime: { desc: "newest first", asc: "oldest first" },
         recent: { desc: "finished most recently at the top", asc: "finished longest ago at the top" },
       };
+      // Hover zoom multiplies the resting size, and the overlay caps the result
+      // at 400% so the panel can't overflow its window. Spell out the real
+      // on-screen sizes rather than making the user do the arithmetic.
+      function renderSizeHint() {
+        const base = settings.baseScale || 100;
+        const hovered = Math.min((base * (settings.hoverZoom || 200)) / 100, 400);
+        let txt = "Panel sits at " + base + "% and grows to " + Math.round(hovered) + "% under the cursor.";
+        if (hovered === 400) txt += " (Capped at 400%.)";
+        $("sizeHint").textContent = txt;
+      }
+
       function renderSortHint() {
         const mode = settings.sortMode || "status";
         const dir = settings.sortDir || "desc";
@@ -283,7 +300,7 @@
         $("sortHint").textContent = txt;
       }
 
-      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, hPos: "right", vPos: "top", align: "right", sortMode: "status", sortDir: "desc", favManual: false, soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
+      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, baseScale: 100, hPos: "right", vPos: "top", align: "right", sortMode: "status", sortDir: "desc", favManual: false, soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
       let sessions = [];
 
       function keyFav(k) {
@@ -311,6 +328,9 @@
         $("hoverOpaque").checked = settings.hoverOpaque !== false;
         $("hoverZoom").value = settings.hoverZoom || 200;
         $("hoverZoomVal").textContent = (settings.hoverZoom || 200) + "%";
+        $("baseScale").value = settings.baseScale || 100;
+        $("baseScaleVal").textContent = (settings.baseScale || 100) + "%";
+        renderSizeHint();
         $("lanBroadcast").checked = !!settings.lanBroadcast;
         $("lanListen").checked = settings.lanListen !== false;
         if (document.activeElement !== $("lanKey")) $("lanKey").value = settings.lanKey || "";
@@ -473,7 +493,15 @@
         const v = Number(e.target.value);
         $("hoverZoomVal").textContent = v + "%";
         settings.hoverZoom = v;
+        renderSizeHint();
         window.hud.update({ hoverZoom: v });
+      });
+      $("baseScale").addEventListener("input", (e) => {
+        const v = Number(e.target.value);
+        $("baseScaleVal").textContent = v + "%";
+        settings.baseScale = v;
+        renderSizeHint();
+        window.hud.update({ baseScale: v });
       });
       $("lanBroadcast").addEventListener("change", (e) =>
         window.hud.update({ lanBroadcast: e.target.checked })
