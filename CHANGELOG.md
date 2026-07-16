@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.0](https://github.com/jacksonkr/multi-claude-hud/compare/v1.0.1...v1.1.0) (2026-07-16)
+
+
+### Features
+
+* circle alignment setting (left/center/right), independent of placement ([2281b0f](https://github.com/jacksonkr/multi-claude-hud/commit/2281b0fd48d6d205fb26ab2057caf8d72d91fcf3))
+* independent horizontal + vertical overlay placement (3×3) ([aeb8a48](https://github.com/jacksonkr/multi-claude-hud/commit/aeb8a48e72663036017c616d58f47ba74121e255))
+* sort direction (ascending/descending) for the terminal sort ([d6dfaca](https://github.com/jacksonkr/multi-claude-hud/commit/d6dfaca7bd1da28f92d406837063ca198cc8ad48))
+
+
+### Bug Fixes
+
+* **macos:** show the overlay + tray on macOS (focusable panel, tray fallback) ([dce4319](https://github.com/jacksonkr/multi-claude-hud/commit/dce4319fb0fdf54a4249eaf7d41df30d5448793f))
+* sort favorites like everything else, with an opt-in manual order ([8475682](https://github.com/jacksonkr/multi-claude-hud/commit/84756826c42059a25c19d3de08d95b0eb4e8ce9a))
+
 ## [1.0.1](https://github.com/jacksonkr/multi-claude-hud/compare/v1.0.0...v1.0.1) (2026-07-04)
 
 
