@@ -211,7 +211,7 @@
     </div>
 
     <div class="group">
-      <div class="title">Sort terminals (non-favorites)</div>
+      <div class="title">Sort terminals</div>
       <div class="row">
         <label class="lbl">Sort by</label>
         <select id="sortMode">
@@ -227,6 +227,9 @@
           <option value="desc">Descending</option>
           <option value="asc">Ascending</option>
         </select>
+      </div>
+      <div class="row">
+        <label class="check"><input id="favManual" type="checkbox" /> Keep favorites in my manual (drag) order</label>
       </div>
       <div class="hint" id="sortHint"></div>
     </div>
@@ -274,11 +277,13 @@
         let txt = "Descending = " + SORT_DIR_LABELS[mode].desc + " · Ascending = " + SORT_DIR_LABELS[mode].asc + ".";
         if (mode === "recent")
           txt += " A terminal that's still working counts as “just finished”, so it sits at the top.";
-        txt += " Favorites keep their own drag order at the top and are never re-sorted.";
+        txt += settings.favManual
+          ? " Favorites are pinned to the top in the order you drag them below; everything else uses the sort."
+          : " Applies to every group — favorites stay pinned at the top, but sort among themselves too.";
         $("sortHint").textContent = txt;
       }
 
-      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, hPos: "right", vPos: "top", align: "right", sortMode: "status", sortDir: "desc", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
+      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, hPos: "right", vPos: "top", align: "right", sortMode: "status", sortDir: "desc", favManual: false, soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
       let sessions = [];
 
       function keyFav(k) {
@@ -311,6 +316,7 @@
         if (document.activeElement !== $("lanKey")) $("lanKey").value = settings.lanKey || "";
         $("sortMode").value = settings.sortMode || "status";
         $("sortDir").value = settings.sortDir || "desc";
+        $("favManual").checked = !!settings.favManual;
         renderSortHint();
         $("soundMode").value = settings.soundMode || "off";
         $("soundScope").value = settings.soundScope || "all";
@@ -399,8 +405,12 @@
 
         box.innerHTML = "";
         if (favSessions.length) {
-          box.appendChild(sectionHeader("★ Favorites — drag to reorder"));
-          for (const s of favSessions) box.appendChild(makeTermRow(s, favSet, hid, true));
+          // Dragging only means something when favorites are in manual order.
+          const manual = !!settings.favManual;
+          box.appendChild(
+            sectionHeader(manual ? "★ Favorites — drag to reorder" : "★ Favorites — sorted, pinned to the top")
+          );
+          for (const s of favSessions) box.appendChild(makeTermRow(s, favSet, hid, manual));
         }
         box.appendChild(sectionHeader(favSessions.length ? "Other terminals" : "Terminals"));
         for (const s of others) box.appendChild(makeTermRow(s, favSet, hid, false));
@@ -481,6 +491,12 @@
       $("sortDir").addEventListener("change", (e) =>
         window.hud.update({ sortDir: e.target.value })
       );
+      $("favManual").addEventListener("change", (e) => {
+        settings.favManual = e.target.checked;
+        renderSortHint();
+        renderTerminals(); // drag handles come and go with this
+        window.hud.update({ favManual: settings.favManual });
+      });
 
       // Live data from main.
       window.hud.onSettings((s) => {

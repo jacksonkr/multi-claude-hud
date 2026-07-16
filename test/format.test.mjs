@@ -7,7 +7,19 @@ import {
   labelOf,
   sortComparator,
   defaultDirFor,
+  orderSessions,
 } from "../overlay/shared.mjs";
+
+// Terminals for the orderSessions tests. keyOf is `${host}::${name}`.
+const mk = (name, extra = {}) => ({
+  id: name,
+  host: "h",
+  name,
+  status: "idle",
+  lastWorkingAt: 0,
+  ...extra,
+});
+const names = (list) => list.map((s) => s.name);
 
 const S = 1000, M = 60 * S, H = 60 * M, D = 24 * H;
 
@@ -71,6 +83,50 @@ test("sortComparator: recent puts the most recently finished on top; asc flips i
   const working = { status: "working", lastWorkingAt: 300 };
   const order = [longAgo, justDone, working].sort(sortComparator("recent"));
   assert.deepEqual(order, [working, justDone, longAgo]);
+});
+
+test("orderSessions: favorites sort like everything else by default", () => {
+  const a = mk("a", { lastWorkingAt: 100 });
+  const b = mk("b", { lastWorkingAt: 300 });
+  const c = mk("c", { lastWorkingAt: 200 });
+  const out = orderSessions([a, b, c], {
+    sortMode: "recent",
+    // Drag order deliberately disagrees with the sort — the sort should win.
+    favorites: ["h::a", "h::b"],
+  });
+  assert.deepEqual(names(out), ["b", "a", "c"]); // favs (recent-first), then c
+});
+
+test("orderSessions: favManual pins favorites to their drag order", () => {
+  const a = mk("a", { lastWorkingAt: 100 });
+  const b = mk("b", { lastWorkingAt: 300 });
+  const c = mk("c", { lastWorkingAt: 200 });
+  const out = orderSessions([a, b, c], {
+    sortMode: "recent",
+    favManual: true,
+    favorites: ["h::a", "h::b"],
+  });
+  assert.deepEqual(names(out), ["a", "b", "c"]); // drag order, sort ignored
+});
+
+test("orderSessions: groups never interleave and hidden are dropped", () => {
+  const fav = mk("fav", { lastWorkingAt: 1 });
+  const watched = mk("watched", { lastWorkingAt: 2, bg: true });
+  const plain = mk("plain", { lastWorkingAt: 999 });
+  const gone = mk("gone", { lastWorkingAt: 999 });
+  const out = orderSessions([plain, gone, watched, fav], {
+    sortMode: "recent",
+    favorites: ["h::fav"],
+    hidden: ["h::gone"],
+  });
+  // `plain` is the most recent but still sorts below both earlier groups.
+  assert.deepEqual(names(out), ["fav", "watched", "plain"]);
+});
+
+test("orderSessions: a favorite is never also counted as watched", () => {
+  const favBg = mk("favBg", { bg: true });
+  const out = orderSessions([favBg], { favorites: ["h::favBg"] });
+  assert.deepEqual(names(out), ["favBg"]); // once, not twice
 });
 
 test("sortComparator: direction reverses every mode, including tie-breaks", () => {

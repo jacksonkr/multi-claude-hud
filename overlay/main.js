@@ -59,6 +59,7 @@ const DEFAULTS = {
   align: "right", // circle/chip alignment within the panel: left | center | right
   sortMode: "status",
   sortDir: "desc", // asc | desc — direction for sortMode (see SORT_DEFAULT_DIR)
+  favManual: false, // true = favorites use their drag order instead of the sort
   soundMode: "off", // off | any | waiting (→ yellow) | done (→ red)
   soundScope: "all", // all | favorites — which lights may chime
   soundVolume: 100, // chime loudness in percent (0–200)
@@ -120,6 +121,7 @@ function clampSettings() {
   settings.opacity = Math.min(1, Math.max(0.1, Number(settings.opacity) || 0.6));
   if (!SORT_MODES.includes(settings.sortMode)) settings.sortMode = "status";
   if (!SORT_DIRS.includes(settings.sortDir)) settings.sortDir = SORT_DEFAULT_DIR[settings.sortMode];
+  settings.favManual = !!settings.favManual;
   if (!["off", "any", "waiting", "done"].includes(settings.soundMode)) settings.soundMode = "off";
   if (!["all", "favorites"].includes(settings.soundScope)) settings.soundScope = "all";
   const vol = Number(settings.soundVolume);
@@ -429,8 +431,14 @@ function buildTray() {
     { label: "Activity history…", click: openHistory },
     { type: "separator" },
     { label: "Favorites (pin to top)", submenu: favItems },
-    { label: "Sort others by", submenu: sortItems },
+    { label: "Sort by", submenu: sortItems },
     { label: "Sort order", submenu: dirItems },
+    {
+      label: "Favorites in manual (drag) order",
+      type: "checkbox",
+      checked: settings.favManual,
+      click: (item) => updateSettings({ favManual: item.checked }),
+    },
     { label: "Opacity", submenu: opacityItems },
     { type: "separator" },
     {

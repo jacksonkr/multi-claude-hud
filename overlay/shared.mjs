@@ -75,3 +75,25 @@ export function sortComparator(mode, dir = defaultDirFor(mode)) {
   const asc = ascComparator(mode);
   return dir === "asc" ? asc : (a, b) => -asc(a, b);
 }
+
+// Group and order every visible terminal: favorites first, then "watched"
+// (a shell/monitor is still running), then the rest. Hidden terminals are
+// dropped. Each group is sorted independently, so the groups never interleave.
+//
+// Favorites follow the same sort as everything else unless `favManual` is on,
+// which switches them to the manual drag order held in `favorites`.
+export function orderSessions(list, settings = {}) {
+  const favKeys = settings.favorites || [];
+  const hidden = settings.hidden || [];
+  const cmp = sortComparator(settings.sortMode, settings.sortDir);
+  const isFav = (s) => favKeys.includes(keyOf(s));
+
+  const all = [...list].filter((s) => !hidden.includes(keyOf(s)));
+  const favs = all.filter(isFav);
+  const dragOrder = (a, b) => favKeys.indexOf(keyOf(a)) - favKeys.indexOf(keyOf(b));
+  favs.sort(settings.favManual ? dragOrder : cmp);
+
+  const watched = all.filter((s) => !isFav(s) && s.bg).sort(cmp);
+  const rest = all.filter((s) => !isFav(s) && !s.bg).sort(cmp);
+  return [...favs, ...watched, ...rest];
+}

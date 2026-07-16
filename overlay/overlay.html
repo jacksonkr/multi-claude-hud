@@ -247,7 +247,7 @@
       </div>
     </div>
     <script type="module">
-      import { keyOf, labelOf, colorOf, idleLabel, sortComparator } from "./shared.mjs";
+      import { keyOf, labelOf, colorOf, idleLabel, orderSessions } from "./shared.mjs";
 
       const params = new URLSearchParams(location.search);
       const HUB = params.get("hub") || "http://localhost:4500";
@@ -259,6 +259,7 @@
         hoverZoom: 200,
         sortMode: "status",
         sortDir: "desc",
+        favManual: false,
         soundMode: "off",
         soundScope: "all",
         soundVolume: 100,
@@ -293,7 +294,6 @@
 
       // keyOf / labelOf come from shared.mjs (also used by the test suite).
       const isFav = (s) => settings.favorites.includes(keyOf(s));
-      const isHidden = (s) => (settings.hidden || []).includes(keyOf(s));
 
       // Panel content anchoring: X follows circle alignment, Y follows vertical
       // placement. (The window's own X/Y position is handled in the main process.)
@@ -399,21 +399,9 @@
         return { chip, light, idle, star, host, proj, color: null, fav: null, idleText: "", idleUnit: "" };
       }
 
-      // Order: favorites, then "watched" (a shell/monitor is running), then the
-      // rest — each group ordered by the chosen sort mode. Hidden terminals are
-      // dropped entirely.
-      function sortedIds() {
-        const cmp = sortComparator(settings.sortMode, settings.sortDir);
-        const all = [...sessions.values()].filter((s) => !isHidden(s));
-        const favOrder = settings.favorites || [];
-        // Favorites keep the manual (drag) order set in Settings.
-        const favs = all
-          .filter(isFav)
-          .sort((a, b) => favOrder.indexOf(keyOf(a)) - favOrder.indexOf(keyOf(b)));
-        const watched = all.filter((s) => !isFav(s) && s.bg).sort(cmp);
-        const rest = all.filter((s) => !isFav(s) && !s.bg).sort(cmp);
-        return [...favs, ...watched, ...rest].map((s) => s.id);
-      }
+      // Grouping + ordering lives in shared.mjs (also used by the test suite).
+      const sortedIds = () =>
+        orderSessions([...sessions.values()], settings).map((s) => s.id);
 
       function render() {
         const order = sortedIds();
