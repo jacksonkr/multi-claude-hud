@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { idleLabel, colorOf, keyOf, labelOf, sortComparator } from "../overlay/shared.mjs";
+import {
+  idleLabel,
+  colorOf,
+  keyOf,
+  labelOf,
+  sortComparator,
+  defaultDirFor,
+} from "../overlay/shared.mjs";
 
 const S = 1000, M = 60 * S, H = 60 * M, D = 24 * H;
 
@@ -42,4 +49,34 @@ test("sortComparator: status puts working first, alpha sorts by label", () => {
   assert.ok(sortComparator("alpha")(idle, work) < 0); // "a" before "z"
   assert.ok(sortComparator("lifetime")({ startedAt: 1 }, { startedAt: 2 }) < 0);
   assert.ok(sortComparator("recent")({ lastWorkingAt: 2 }, { lastWorkingAt: 1 }) < 0);
+});
+
+test("sortComparator: each mode defaults to its natural direction", () => {
+  assert.equal(defaultDirFor("status"), "desc");
+  assert.equal(defaultDirFor("alpha"), "asc");
+  assert.equal(defaultDirFor("lifetime"), "asc");
+  assert.equal(defaultDirFor("recent"), "desc");
+  // An unknown mode still yields a usable comparator.
+  assert.equal(defaultDirFor("nope"), "desc");
+});
+
+test("sortComparator: recent puts the most recently finished on top; asc flips it", () => {
+  const justDone = { status: "idle", lastWorkingAt: 200 };
+  const longAgo = { status: "idle", lastWorkingAt: 100 };
+  // Default (desc) = finished most recently first.
+  assert.ok(sortComparator("recent", "desc")(justDone, longAgo) < 0);
+  // Ascending = finished longest ago first.
+  assert.ok(sortComparator("recent", "asc")(longAgo, justDone) < 0);
+  // Still-working terminals carry lastWorkingAt = now, so they lead in desc.
+  const working = { status: "working", lastWorkingAt: 300 };
+  const order = [longAgo, justDone, working].sort(sortComparator("recent"));
+  assert.deepEqual(order, [working, justDone, longAgo]);
+});
+
+test("sortComparator: direction reverses every mode, including tie-breaks", () => {
+  const work = { status: "working", name: "z", lastWorkingAt: 1 };
+  const idle = { status: "idle", name: "a", lastWorkingAt: 2 };
+  assert.ok(sortComparator("status", "asc")(idle, work) < 0); // idle first
+  assert.ok(sortComparator("alpha", "desc")(work, idle) < 0); // "z" before "a"
+  assert.ok(sortComparator("lifetime", "desc")({ startedAt: 2 }, { startedAt: 1 }) < 0);
 });

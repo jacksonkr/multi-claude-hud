@@ -36,7 +36,18 @@ const SORT_LABELS = {
   status: "Status (working first)",
   alpha: "Name (A–Z)",
   lifetime: "Lifetime (oldest first)",
-  recent: "Last active",
+  recent: "Recently finished",
+};
+const SORT_DIRS = ["desc", "asc"];
+// Each mode's natural direction — mirrors SORT_DEFAULT_DIR in shared.mjs (which
+// this CommonJS file can't import). Selecting a mode resets the direction to it.
+const SORT_DEFAULT_DIR = { status: "desc", alpha: "asc", lifetime: "asc", recent: "desc" };
+// What "descending" / "ascending" mean for each mode, for the tray menu.
+const SORT_DIR_LABELS = {
+  status: { desc: "Working first", asc: "Idle first" },
+  alpha: { desc: "Z → A", asc: "A → Z" },
+  lifetime: { desc: "Newest first", asc: "Oldest first" },
+  recent: { desc: "Most recently finished first", asc: "Finished longest ago first" },
 };
 
 const DEFAULTS = {
@@ -47,6 +58,7 @@ const DEFAULTS = {
   vPos: "top", // window vertical placement: top | middle | bottom
   align: "right", // circle/chip alignment within the panel: left | center | right
   sortMode: "status",
+  sortDir: "desc", // asc | desc — direction for sortMode (see SORT_DEFAULT_DIR)
   soundMode: "off", // off | any | waiting (→ yellow) | done (→ red)
   soundScope: "all", // all | favorites — which lights may chime
   soundVolume: 100, // chime loudness in percent (0–200)
@@ -92,6 +104,9 @@ function loadSettings() {
   }
   // Circle alignment defaults to follow the horizontal placement.
   if (saved.align === undefined && saved.hPos !== undefined) saved.align = saved.hPos;
+  // Pre-sortDir settings sorted in each mode's natural direction; keep that
+  // rather than letting the generic "desc" default flip e.g. A–Z into Z–A.
+  if (saved.sortDir === undefined) saved.sortDir = SORT_DEFAULT_DIR[saved.sortMode || "status"];
   settings = { ...DEFAULTS, ...saved };
   // Env overrides (first run convenience).
   if (process.env.CLAUDE_HUD_OPACITY) settings.opacity = Number(process.env.CLAUDE_HUD_OPACITY);
@@ -104,6 +119,7 @@ function loadSettings() {
 function clampSettings() {
   settings.opacity = Math.min(1, Math.max(0.1, Number(settings.opacity) || 0.6));
   if (!SORT_MODES.includes(settings.sortMode)) settings.sortMode = "status";
+  if (!SORT_DIRS.includes(settings.sortDir)) settings.sortDir = SORT_DEFAULT_DIR[settings.sortMode];
   if (!["off", "any", "waiting", "done"].includes(settings.soundMode)) settings.soundMode = "off";
   if (!["all", "favorites"].includes(settings.soundScope)) settings.soundScope = "all";
   const vol = Number(settings.soundVolume);
@@ -393,11 +409,19 @@ function buildTray() {
     click: () => updateSettings({ opacity: pct / 100 }),
   }));
 
+  // Picking a mode also resets the direction to that mode's natural one.
   const sortItems = SORT_MODES.map((m) => ({
     label: SORT_LABELS[m],
     type: "radio",
     checked: settings.sortMode === m,
-    click: () => updateSettings({ sortMode: m }),
+    click: () => updateSettings({ sortMode: m, sortDir: SORT_DEFAULT_DIR[m] }),
+  }));
+
+  const dirItems = SORT_DIRS.map((d) => ({
+    label: SORT_DIR_LABELS[settings.sortMode][d],
+    type: "radio",
+    checked: settings.sortDir === d,
+    click: () => updateSettings({ sortDir: d }),
   }));
 
   const menu = Menu.buildFromTemplate([
@@ -406,6 +430,7 @@ function buildTray() {
     { type: "separator" },
     { label: "Favorites (pin to top)", submenu: favItems },
     { label: "Sort others by", submenu: sortItems },
+    { label: "Sort order", submenu: dirItems },
     { label: "Opacity", submenu: opacityItems },
     { type: "separator" },
     {

@@ -35,23 +35,43 @@ export function idleLabel(ms) {
   return Math.floor(d / 365) + "y";
 }
 
-// Comparator for a given sort mode (favorites are grouped separately by caller).
-export function sortComparator(mode) {
-  return (a, b) => {
-    switch (mode) {
-      case "alpha":
-        return labelOf(a).toLowerCase().localeCompare(labelOf(b).toLowerCase());
-      case "lifetime": // longest-lived first (oldest start)
-        return (a.startedAt || 0) - (b.startedAt || 0);
-      case "recent": // most recently active first
-        return (b.lastWorkingAt || 0) - (a.lastWorkingAt || 0);
-      case "status":
-      default: {
-        const aw = a.status === "working" ? 0 : 1;
-        const bw = b.status === "working" ? 0 : 1;
+// Every mode below is written in its *ascending* form; "desc" simply reverses
+// it. Each mode has its own natural default direction (A–Z reads ascending,
+// but "most recently finished first" reads descending), so the UI resets the
+// direction to this when the mode changes.
+export const SORT_DEFAULT_DIR = {
+  status: "desc", // working first
+  alpha: "asc", // A–Z
+  lifetime: "asc", // oldest start first
+  recent: "desc", // most recently finished first
+};
+export const defaultDirFor = (mode) => SORT_DEFAULT_DIR[mode] || "desc";
+
+// Ascending comparators. `lastWorkingAt` is the moment a terminal stopped
+// working (for one that's still working it's "now"), so ascending = finished
+// longest ago first, and descending = finished most recently first.
+function ascComparator(mode) {
+  switch (mode) {
+    case "alpha":
+      return (a, b) => labelOf(a).toLowerCase().localeCompare(labelOf(b).toLowerCase());
+    case "lifetime":
+      return (a, b) => (a.startedAt || 0) - (b.startedAt || 0);
+    case "recent":
+      return (a, b) => (a.lastWorkingAt || 0) - (b.lastWorkingAt || 0);
+    case "status":
+    default:
+      return (a, b) => {
+        const aw = a.status === "working" ? 1 : 0;
+        const bw = b.status === "working" ? 1 : 0;
         if (aw !== bw) return aw - bw;
-        return (b.lastWorkingAt || 0) - (a.lastWorkingAt || 0);
-      }
-    }
-  };
+        return (a.lastWorkingAt || 0) - (b.lastWorkingAt || 0);
+      };
+  }
+}
+
+// Comparator for a given sort mode + direction (favorites are grouped
+// separately by the caller, and keep their manual drag order).
+export function sortComparator(mode, dir = defaultDirFor(mode)) {
+  const asc = ascComparator(mode);
+  return dir === "asc" ? asc : (a, b) => -asc(a, b);
 }

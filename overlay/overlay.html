@@ -258,6 +258,7 @@
         hoverOpaque: true,
         hoverZoom: 200,
         sortMode: "status",
+        sortDir: "desc",
         soundMode: "off",
         soundScope: "all",
         soundVolume: 100,
@@ -402,7 +403,7 @@
       // rest — each group ordered by the chosen sort mode. Hidden terminals are
       // dropped entirely.
       function sortedIds() {
-        const cmp = sortComparator(settings.sortMode);
+        const cmp = sortComparator(settings.sortMode, settings.sortDir);
         const all = [...sessions.values()].filter((s) => !isHidden(s));
         const favOrder = settings.favorites || [];
         // Favorites keep the manual (drag) order set in Settings.

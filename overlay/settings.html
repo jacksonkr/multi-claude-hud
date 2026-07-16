@@ -218,9 +218,17 @@
           <option value="status">Status (working first)</option>
           <option value="alpha">Name (A–Z)</option>
           <option value="lifetime">Lifetime (oldest first)</option>
-          <option value="recent">Last active</option>
+          <option value="recent">Recently finished</option>
         </select>
       </div>
+      <div class="row">
+        <label class="lbl">Order</label>
+        <select id="sortDir">
+          <option value="desc">Descending</option>
+          <option value="asc">Ascending</option>
+        </select>
+      </div>
+      <div class="hint" id="sortHint"></div>
     </div>
 
     <div class="group">
@@ -251,7 +259,26 @@
 
     <script>
       const $ = (id) => document.getElementById(id);
-      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, hPos: "right", vPos: "top", align: "right", sortMode: "status", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
+      // Mirrors SORT_DEFAULT_DIR in shared.mjs. Each mode has a natural
+      // direction, so changing the mode resets the order to it.
+      const SORT_DEFAULT_DIR = { status: "desc", alpha: "asc", lifetime: "asc", recent: "desc" };
+      const SORT_DIR_LABELS = {
+        status: { desc: "working first, then most recently finished", asc: "idle longest first" },
+        alpha: { desc: "Z → A", asc: "A → Z" },
+        lifetime: { desc: "newest first", asc: "oldest first" },
+        recent: { desc: "finished most recently at the top", asc: "finished longest ago at the top" },
+      };
+      function renderSortHint() {
+        const mode = settings.sortMode || "status";
+        const dir = settings.sortDir || "desc";
+        let txt = "Descending = " + SORT_DIR_LABELS[mode].desc + " · Ascending = " + SORT_DIR_LABELS[mode].asc + ".";
+        if (mode === "recent")
+          txt += " A terminal that's still working counts as “just finished”, so it sits at the top.";
+        txt += " Favorites keep their own drag order at the top and are never re-sorted.";
+        $("sortHint").textContent = txt;
+      }
+
+      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, hPos: "right", vPos: "top", align: "right", sortMode: "status", sortDir: "desc", soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
       let sessions = [];
 
       function keyFav(k) {
@@ -283,6 +310,8 @@
         $("lanListen").checked = settings.lanListen !== false;
         if (document.activeElement !== $("lanKey")) $("lanKey").value = settings.lanKey || "";
         $("sortMode").value = settings.sortMode || "status";
+        $("sortDir").value = settings.sortDir || "desc";
+        renderSortHint();
         $("soundMode").value = settings.soundMode || "off";
         $("soundScope").value = settings.soundScope || "all";
         const sv = settings.soundVolume ?? 100;
@@ -445,8 +474,12 @@
       $("lanKey").addEventListener("change", (e) =>
         window.hud.update({ lanKey: e.target.value })
       );
-      $("sortMode").addEventListener("change", (e) =>
-        window.hud.update({ sortMode: e.target.value })
+      $("sortMode").addEventListener("change", (e) => {
+        const mode = e.target.value;
+        window.hud.update({ sortMode: mode, sortDir: SORT_DEFAULT_DIR[mode] });
+      });
+      $("sortDir").addEventListener("change", (e) =>
+        window.hud.update({ sortDir: e.target.value })
       );
 
       // Live data from main.
