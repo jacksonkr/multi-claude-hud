@@ -174,29 +174,35 @@ function appIcon() {
   return img.isEmpty() ? undefined : img;
 }
 
-function positionFor(display) {
+// Full bounds for the overlay window on a given display. WIN_W/WIN_H are only
+// a *maximum*: the window is clamped to the work area, because a laptop display
+// (a MacBook especially) is often shorter than WIN_H, and an oversized window
+// would hang off the bottom of the screen and clip the panel there instead.
+function boundsFor(display) {
   const wa = display.workArea;
-  const w = WIN_W, h = WIN_H, margin = WIN_MARGIN;
+  const margin = WIN_MARGIN;
+  const width = Math.min(WIN_W, Math.max(160, wa.width - margin * 2));
+  const height = Math.min(WIN_H, Math.max(160, wa.height - margin * 2));
   let x;
   if (settings.hPos === "left") x = wa.x + margin;
-  else if (settings.hPos === "center") x = wa.x + Math.round((wa.width - w) / 2);
-  else x = wa.x + wa.width - w - margin; // right
+  else if (settings.hPos === "center") x = wa.x + Math.round((wa.width - width) / 2);
+  else x = wa.x + wa.width - width - margin; // right
   let y;
   if (settings.vPos === "top") y = wa.y + margin;
-  else if (settings.vPos === "middle") y = wa.y + Math.round((wa.height - h) / 2);
-  else y = wa.y + wa.height - h - margin; // bottom
-  return { x, y };
+  else if (settings.vPos === "middle") y = wa.y + Math.round((wa.height - height) / 2);
+  else y = wa.y + wa.height - height - margin; // bottom
+  return { x, y, width, height };
 }
 
 function createOverlay() {
   const display = screen.getPrimaryDisplay();
-  const { x, y } = positionFor(display);
+  const { x, y, width, height } = boundsFor(display);
 
   win = new BrowserWindow({
     x,
     y,
-    width: WIN_W,
-    height: WIN_H,
+    width,
+    height,
     frame: false,
     transparent: true,
     backgroundColor: "#00000000",
@@ -245,7 +251,7 @@ function createOverlay() {
     for (const session of net.snapshot()) win.webContents.send("hud:data", { type: "update", session });
   });
 
-  const reposition = () => win && win.setBounds({ ...positionFor(screen.getPrimaryDisplay()), width: WIN_W, height: WIN_H });
+  const reposition = () => win && win.setBounds(boundsFor(screen.getPrimaryDisplay()));
   screen.on("display-metrics-changed", reposition);
   screen.on("display-added", reposition);
   screen.on("display-removed", reposition);
@@ -298,7 +304,7 @@ function startCursorTracking() {
 function applyToOverlay() {
   if (!win) return;
   // Opacity is applied in the renderer (per-item); just keep the geometry.
-  win.setBounds({ ...positionFor(screen.getPrimaryDisplay()), width: WIN_W, height: WIN_H });
+  win.setBounds(boundsFor(screen.getPrimaryDisplay()));
 }
 
 function broadcastSettings() {

@@ -8,6 +8,7 @@ import {
   sortComparator,
   defaultDirFor,
   orderSessions,
+  panOffset,
 } from "../overlay/shared.mjs";
 
 // Terminals for the orderSessions tests. keyOf is `${host}::${name}`.
@@ -83,6 +84,57 @@ test("sortComparator: recent puts the most recently finished on top; asc flips i
   const working = { status: "working", lastWorkingAt: 300 };
   const order = [longAgo, justDone, working].sort(sortComparator("recent"));
   assert.deepEqual(order, [working, justDone, longAgo]);
+});
+
+// A 600px list zoomed 2x inside an 800px container, anchored top: it spans
+// 0..1200, so 400px hang off the bottom and nothing hangs off the top.
+const tallTop = { top: 0, bot: 600, containerH: 800, scale: 2, originY: 0 };
+
+test("panOffset: no pan while the content fits", () => {
+  const fits = { top: 0, bot: 300, containerH: 800, scale: 2, originY: 0 };
+  assert.equal(panOffset({ ...fits, cursorY: 0 }), 0);
+  assert.equal(panOffset({ ...fits, cursorY: 400 }), 0);
+  assert.equal(panOffset({ ...fits, cursorY: 800 }), 0);
+  // Exactly filling the container is still a fit.
+  assert.equal(panOffset({ top: 0, bot: 400, containerH: 800, scale: 2, originY: 0, cursorY: 800 }), 0);
+});
+
+test("panOffset: cursor at the top shows the top, at the bottom shows the bottom", () => {
+  assert.equal(panOffset({ ...tallTop, cursorY: 0 }), 0); // top already flush
+  assert.equal(panOffset({ ...tallTop, cursorY: 800 }), -400); // pull the last 400px up
+  assert.equal(panOffset({ ...tallTop, cursorY: 400 }), -200); // linear in between
+});
+
+test("panOffset: the panned content always covers the container", () => {
+  // Whatever the cursor does, no gap may open at either edge — a gap is how the
+  // hover hot-zone would lose the cursor and start oscillating.
+  for (let cursorY = 0; cursorY <= 800; cursorY += 50) {
+    const p = panOffset({ ...tallTop, cursorY });
+    const y0 = 0 + p; // scaled top edge, panned
+    const y1 = 1200 + p; // scaled bottom edge, panned
+    assert.ok(y0 <= 0 && y1 >= 800, `gap at cursorY=${cursorY}: [${y0}, ${y1}]`);
+  }
+});
+
+test("panOffset: bottom-anchored overflows upward and pans the other way", () => {
+  // Origin at the container's bottom edge: scaling pushes content up past 0.
+  const tallBottom = { top: 200, bot: 800, containerH: 800, scale: 2, originY: 800 };
+  // Spans -400..800, so 400px hide above and none below.
+  assert.equal(panOffset({ ...tallBottom, cursorY: 0 }), 400); // push down to reveal the top
+  assert.equal(panOffset({ ...tallBottom, cursorY: 800 }), 0); // already flush at the bottom
+});
+
+test("panOffset: middle-anchored overflows both ends", () => {
+  // 800px of content, 2x, origin centred: spans -400..1200 — 400 over each edge.
+  const mid = { top: 0, bot: 800, containerH: 800, scale: 2, originY: 400 };
+  assert.equal(panOffset({ ...mid, cursorY: 0 }), 400); // reveal the top
+  assert.equal(panOffset({ ...mid, cursorY: 800 }), -400); // reveal the bottom
+  assert.equal(panOffset({ ...mid, cursorY: 400 }), 0); // centred, no pan
+});
+
+test("panOffset: cursor outside the container clamps instead of over-panning", () => {
+  assert.equal(panOffset({ ...tallTop, cursorY: -200 }), 0);
+  assert.equal(panOffset({ ...tallTop, cursorY: 5000 }), -400);
 });
 
 test("orderSessions: favorites sort like everything else by default", () => {

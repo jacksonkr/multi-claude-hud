@@ -32,8 +32,12 @@
         height: 100%;
         box-sizing: border-box;
         transform-origin: var(--to-x, right) var(--to-y, top); /* grow from the anchor */
-        transition: transform 0.15s ease, opacity 0.15s ease;
-        transform: scale(var(--base-scale, 1)); /* resting size (a setting) */
+        /* Individual transform properties rather than one `transform`: they let
+           the zoom and the pan carry separate timing, and `translate` composes
+           outside `scale`, so --pan-y stays in unscaled window pixels. */
+        scale: var(--base-scale, 1); /* resting size (a setting) */
+        translate: 0 var(--pan-y, 0px); /* cursor-proportional pan, see updatePan */
+        transition: scale 0.15s ease, opacity 0.15s ease, translate 0.06s linear;
       }
       /* Zoom origin: X follows circle alignment, Y follows vertical placement. */
       body.a-left { --to-x: left; }
@@ -47,7 +51,7 @@
          resting size times the hover factor, so hover always grows the panel by
          the same multiple whatever its resting size. */
       body.hover-opaque.panel-hot #app {
-        transform: scale(var(--hover-scale, 2));
+        scale: var(--hover-scale, 2);
       }
 
       /* After the intercepted click: hide the whole panel so the user can see
@@ -250,7 +254,7 @@
       </div>
     </div>
     <script type="module">
-      import { keyOf, labelOf, colorOf, idleLabel, orderSessions } from "./shared.mjs";
+      import { keyOf, labelOf, colorOf, idleLabel, orderSessions, panOffset } from "./shared.mjs";
 
       const params = new URLSearchParams(location.search);
       const HUB = params.get("hub") || "http://localhost:4500";
@@ -509,6 +513,8 @@
 
         pushSessions();
         if (window.__recomputeContentBox) window.__recomputeContentBox();
+        // The list just changed height, so how far it overflows changed too.
+        if (window.__updatePan) window.__updatePan();
       }
 
       // Send the current terminal list up to the main process (for the tray's
@@ -635,6 +641,51 @@
         );
       }
 
+      // --- Cursor-proportional pan ------------------------------------------
+      // A long list zoomed on hover can end up taller than the window, which
+      // would clip it. Rather than shrink or scroll it, slide the panel
+      // vertically in proportion to where the cursor sits: at the top of the
+      // window you see the list's top, at the bottom you see its bottom, and
+      // the overflow in between maps linearly. Nothing moves unless the panel
+      // actually overflows, so short lists behave exactly as before.
+      let lastCursorY = null;
+
+      const setPan = (px) =>
+        document.documentElement.style.setProperty("--pan-y", px.toFixed(1) + "px");
+
+      function updatePan() {
+        if (lastCursorY == null || !document.body.classList.contains("panel-hot")) {
+          return setPan(0);
+        }
+        const containerH = document.documentElement.clientHeight;
+
+        // Natural extent of the content. offsetTop/offsetHeight are layout
+        // values, so they ignore the scale — which is what we want, since we
+        // apply the scale ourselves below.
+        let top = Infinity, bot = -Infinity, any = false;
+        for (const el of document.querySelectorAll(".header, .chip, .empty")) {
+          if (!el.offsetHeight) continue;
+          any = true;
+          top = Math.min(top, el.offsetTop);
+          bot = Math.max(bot, el.offsetTop + el.offsetHeight);
+        }
+        if (!any) return setPan(0);
+
+        const base = (settings.baseScale || 100) / 100;
+        setPan(
+          panOffset({
+            top,
+            bot,
+            containerH,
+            scale: Math.min(base * ((settings.hoverZoom || 200) / 100), 4),
+            originY:
+              settings.vPos === "top" ? 0 : settings.vPos === "bottom" ? containerH : containerH / 2,
+            cursorY: lastCursorY,
+          })
+        );
+      }
+      window.__updatePan = updatePan; // called after render()
+
       let collapsed = false;
       function applyCollapsed() {
         document.body.classList.toggle("collapsed", collapsed);
@@ -689,11 +740,17 @@
 
       if (window.hud && window.hud.onCursor) {
         window.hud.onCursor((pt) => {
-          if (settings.hoverOpaque === false) return setPerim(false);
-          // Recompute against the current (possibly 2×-scaled) panel so the hot
-          // zone matches what's actually drawn.
+          if (settings.hoverOpaque === false) {
+            lastCursorY = null;
+            setPan(0);
+            return setPerim(false);
+          }
+          // Recompute against the current (possibly 2×-scaled and panned) panel
+          // so the hot zone matches what's actually drawn.
           recomputeContentBox();
+          lastCursorY = pt ? pt.y : null;
           setPerim(!!(pt && withinPerim(pt.x, pt.y)));
+          updatePan(); // after setPerim: it reads the panel-hot class
         });
       }
 

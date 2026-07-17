@@ -76,6 +76,24 @@ export function sortComparator(mode, dir = defaultDirFor(mode)) {
   return dir === "asc" ? asc : (a, b) => -asc(a, b);
 }
 
+// How far to slide a panel vertically so that a cursor at `cursorY` reveals the
+// matching part of a list too tall for its container. `top`/`bot` are the
+// content's natural (unscaled) extent, `originY` the transform origin, both in
+// container pixels; the result is in unscaled pixels, positive = downward.
+//
+// Cursor at the top of the container shows the content's top edge, cursor at the
+// bottom shows its bottom edge, and everything between maps linearly. Returns 0
+// whenever the scaled content already fits, so short lists never move.
+export function panOffset({ top, bot, containerH, scale, originY, cursorY }) {
+  const y0 = originY + (top - originY) * scale;
+  const y1 = originY + (bot - originY) * scale;
+  const overTop = Math.max(0, -y0); // hidden above the container
+  const overBot = Math.max(0, y1 - containerH); // hidden below it
+  if (!overTop && !overBot) return 0;
+  const t = Math.min(1, Math.max(0, cursorY / containerH));
+  return overTop - t * (overTop + overBot);
+}
+
 // Group and order every visible terminal: favorites first, then "watched"
 // (a shell/monitor is still running), then the rest. Hidden terminals are
 // dropped. Each group is sorted independently, so the groups never interleave.
