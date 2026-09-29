@@ -478,11 +478,13 @@
             v.color = color;
           }
 
-          // Time badge: on yellow/red it's time-in-state; on split lights it's
-          // how long the attached subprocess has been running.
-          const split = color === "split";
-          if (color === "yellow" || color === "red" || split) {
-            const anchor = split ? s.bgSince || now() : s.lastWorkingAt || s.startedAt || now();
+          // Time badge: how long since Claude stopped working — i.e. how long
+          // it's been the user's turn. Anchored to lastWorkingAt, which only
+          // advances while Claude's own status is "working", so a running
+          // shell/subprocess never resets it (split lights count the same as
+          // red/yellow).
+          if (color === "yellow" || color === "red" || color === "split") {
+            const anchor = s.lastWorkingAt || s.startedAt || now();
             const txt = idleLabel(now() - anchor);
             if (txt !== v.idleText) {
               v.idle.textContent = txt;

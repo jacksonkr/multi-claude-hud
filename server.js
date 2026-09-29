@@ -180,8 +180,6 @@ function applyScan(scan) {
       platform: scan.platform || prev.platform || "",
       status,
       bg,
-      // Steady subprocess-start time while it keeps running (for the badge).
-      bgSince: bg ? (prev.bg && prev.bgSince ? prev.bgSince : ts) : null,
       activity:
         status === "working" ? (bg ? "working + background task" : "working")
         : status === "waiting" ? "waiting for you"
