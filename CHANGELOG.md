@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/jacksonkr/multi-claude-hud/compare/v1.1.0...v1.1.1) (2026-09-29)
+
+
+### Bug Fixes
+
+* idle counter ignores background shells, tracks only Claude's turn ([4b1c793](https://github.com/jacksonkr/multi-claude-hud/commit/4b1c79301a20543b568d1b31ab2ed65ad40231c4))
+* pan a too-tall list under the cursor instead of clipping it ([b722504](https://github.com/jacksonkr/multi-claude-hud/commit/b722504489d33310f56b07261eccdb3c298bc47b))
+
 ## [1.1.0](https://github.com/jacksonkr/multi-claude-hud/compare/v1.0.1...v1.1.0) (2026-07-16)
 
 
