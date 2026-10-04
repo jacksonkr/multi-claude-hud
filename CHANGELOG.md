@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/jacksonkr/multi-claude-hud/compare/v1.1.1...v1.2.0) (2026-10-04)
+
+
+### Features
+
+* add a Restart option to the tray menu ([6f847a6](https://github.com/jacksonkr/multi-claude-hud/commit/6f847a6ebb8cea2602b61288a14ccb7d1e5e0534))
+* LAN sharing mode enum (off / send / receive / all) ([590db20](https://github.com/jacksonkr/multi-claude-hud/commit/590db20adef9682e311274517f208822473c77a1))
+
 ## [1.1.1](https://github.com/jacksonkr/multi-claude-hud/compare/v1.1.0...v1.1.1) (2026-09-29)
 
 
