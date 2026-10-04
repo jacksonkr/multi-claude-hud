@@ -231,16 +231,18 @@ you opt in) broadcasts its terminals so any other device listening sees them —
 no hub, no IP config, no per-host firewall rule.
 
 Open the overlay's **Settings → LAN sharing** and on each device set the **same
-Network key** (a passphrase), then:
-- tick **Broadcast my terminals to this LAN** on devices you want to share *from*,
-- keep **Show terminals other devices broadcast** on to display peers.
+Network key** (a passphrase), then pick a **Mode**:
+- **Send** — share this machine's terminals only,
+- **Receive** — show other machines' terminals only,
+- **All** — both,
+- **Off** — neither.
 
 Security:
 - Every packet is **AES-256-GCM** encrypted with a key derived (scrypt) from
   your passphrase. Devices without the passphrase can't read *or* forge packets;
   tampered/garbage packets fail the auth tag and are dropped.
-- **Off by default.** Nothing leaves a machine unless you tick *Broadcast* and
-  set a key. Meant for a trusted LAN.
+- **Nothing is sent or received until a key is set**, whatever the mode. Meant
+  for a trusted LAN.
 - Transport is UDP directed-broadcast on port **41234** (configurable in code).
   If a device can't receive, allow inbound UDP 41234 through its firewall.
 

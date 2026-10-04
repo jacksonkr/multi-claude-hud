@@ -1,8 +1,8 @@
 // The overlay's networking engine. It:
 //   • scans THIS machine's terminals locally,
 //   • on Windows, also scans every running WSL distro via pass-through,
-//   • (opt-in, encrypted) broadcasts all of the above to the LAN, and
-//   • always listens for other devices' broadcasts.
+//   • (opt-in, encrypted) sends all of the above to the LAN and/or receives
+//     other devices' broadcasts, per lanMode (off/send/receive/all).
 // It emits the same `update`/`remove` messages the renderer already
 // understands, so the overlay works with or without a hub.
 
@@ -15,12 +15,16 @@ import { deriveKey, createBroadcaster, createListener } from "../lib/lan.mjs";
 const SCAN_MS = 3000;
 const PEER_TIMEOUT_MS = 15000;
 
+// lanMode: "off" | "send" | "receive" | "all".
+const sends = (m) => m === "send" || m === "all";
+const receives = (m) => m === "receive" || m === "all";
+
 export function createNetEngine({ onData }) {
   const store = new Map(); // id -> record (local + WSL + all LAN peers)
   const SELF = process.env.CLAUDE_HUD_NAME || os.hostname();
   const localBase = { user: os.userInfo().username, platform: process.platform };
 
-  let settings = { lanBroadcast: false, lanListen: true, lanKey: "" };
+  let settings = { lanMode: "receive", lanKey: "" };
   let key = null;
   let broadcaster = null;
   let listener = null;
@@ -75,7 +79,7 @@ export function createNetEngine({ onData }) {
       for (const g of groups) {
         applyHostSnapshot(g.host, g.sessions, { ...localBase, source: "local" }, now);
       }
-      if (settings.lanBroadcast && key && broadcaster) {
+      if (sends(settings.lanMode) && key && broadcaster) {
         broadcaster.send({
           from: SELF,
           t: now,
@@ -132,16 +136,15 @@ export function createNetEngine({ onData }) {
     if (listener) listener.close();
     broadcaster = listener = null;
     key = deriveKey(settings.lanKey);
-    if (key && settings.lanListen) listener = createListener({ key, onMessage: onLan });
-    if (key && settings.lanBroadcast) broadcaster = createBroadcaster({ key });
+    if (key && receives(settings.lanMode)) listener = createListener({ key, onMessage: onLan });
+    if (key && sends(settings.lanMode)) broadcaster = createBroadcaster({ key });
   }
 
   return {
     snapshot: () => [...store.values()],
     applySettings(s) {
       settings = {
-        lanBroadcast: !!s.lanBroadcast,
-        lanListen: s.lanListen !== false,
+        lanMode: s.lanMode || "receive",
         lanKey: s.lanKey || "",
       };
       restartLan();

@@ -66,11 +66,12 @@ const DEFAULTS = {
   soundVolume: 100, // chime loudness in percent (0–200)
   favorites: [], // stable keys "host::name" pinned to the top
   hidden: [], // stable keys hidden from the overlay
-  // LAN sharing (secure, opt-in). Off by default; broadcasting needs a key.
-  lanBroadcast: false,
-  lanListen: true,
+  // LAN sharing (secure, opt-in). Needs a key before anything leaves/enters.
+  // off | send (this machine only) | receive (other machines only) | all.
+  lanMode: "receive",
   lanKey: "",
 };
+const LAN_MODES = ["off", "send", "receive", "all"];
 
 // The window is kept large and transparent so the panel can zoom on hover (up
 // to ~300%) without being clipped; only the panel's pixels are ever visible.
@@ -109,6 +110,14 @@ function loadSettings() {
   // Pre-sortDir settings sorted in each mode's natural direction; keep that
   // rather than letting the generic "desc" default flip e.g. A–Z into Z–A.
   if (saved.sortDir === undefined) saved.sortDir = SORT_DEFAULT_DIR[saved.sortMode || "status"];
+  // Migrate the legacy lanBroadcast/lanListen booleans to the single lanMode.
+  if (saved.lanMode === undefined && (saved.lanBroadcast !== undefined || saved.lanListen !== undefined)) {
+    const send = !!saved.lanBroadcast;
+    const receive = saved.lanListen !== false;
+    saved.lanMode = send && receive ? "all" : send ? "send" : receive ? "receive" : "off";
+  }
+  delete saved.lanBroadcast;
+  delete saved.lanListen;
   settings = { ...DEFAULTS, ...saved };
   // Env overrides (first run convenience).
   if (process.env.CLAUDE_HUD_OPACITY) settings.opacity = Number(process.env.CLAUDE_HUD_OPACITY);
@@ -136,8 +145,7 @@ function clampSettings() {
   settings.hoverOpaque = settings.hoverOpaque !== false;
   settings.hoverZoom = Math.min(400, Math.max(100, Number(settings.hoverZoom) || 200));
   settings.baseScale = Math.min(200, Math.max(20, Number(settings.baseScale) || 100));
-  settings.lanBroadcast = !!settings.lanBroadcast;
-  settings.lanListen = settings.lanListen !== false;
+  if (!LAN_MODES.includes(settings.lanMode)) settings.lanMode = "receive";
   settings.lanKey = String(settings.lanKey || "");
 }
 function saveSettings() {

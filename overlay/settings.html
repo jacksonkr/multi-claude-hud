@@ -243,10 +243,13 @@
     <div class="group">
       <div class="title">LAN sharing (secure, opt-in)</div>
       <div class="row">
-        <label class="check"><input id="lanBroadcast" type="checkbox" /> Broadcast my terminals to this LAN</label>
-      </div>
-      <div class="row">
-        <label class="check"><input id="lanListen" type="checkbox" /> Show terminals other devices broadcast</label>
+        <label class="lbl">Mode</label>
+        <select id="lanMode">
+          <option value="off">Off</option>
+          <option value="send">Send — share this machine only</option>
+          <option value="receive">Receive — show other machines only</option>
+          <option value="all">All — send and receive</option>
+        </select>
       </div>
       <div class="row">
         <label class="lbl">Network key</label>
@@ -254,9 +257,8 @@
       </div>
       <div class="hint">
         Traffic is encrypted (AES-256-GCM) with a key derived from this
-        passphrase — set the <b>same</b> key on every device. Broadcasting only
-        starts once a key is set. Nothing leaves this machine unless you tick
-        “Broadcast”. Keep it to a trusted LAN.
+        passphrase — set the <b>same</b> key on every device. Nothing is sent or
+        received until a key is set, whatever the mode. Keep it to a trusted LAN.
       </div>
     </div>
 
@@ -300,7 +302,7 @@
         $("sortHint").textContent = txt;
       }
 
-      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, baseScale: 100, hPos: "right", vPos: "top", align: "right", sortMode: "status", sortDir: "desc", favManual: false, soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanBroadcast: false, lanListen: true, lanKey: "" };
+      let settings = { opacity: 0.6, hoverOpaque: true, hoverZoom: 200, baseScale: 100, hPos: "right", vPos: "top", align: "right", sortMode: "status", sortDir: "desc", favManual: false, soundMode: "off", soundScope: "all", soundVolume: 100, favorites: [], hidden: [], lanMode: "receive", lanKey: "" };
       let sessions = [];
 
       function keyFav(k) {
@@ -331,8 +333,7 @@
         $("baseScale").value = settings.baseScale || 100;
         $("baseScaleVal").textContent = (settings.baseScale || 100) + "%";
         renderSizeHint();
-        $("lanBroadcast").checked = !!settings.lanBroadcast;
-        $("lanListen").checked = settings.lanListen !== false;
+        $("lanMode").value = settings.lanMode || "receive";
         if (document.activeElement !== $("lanKey")) $("lanKey").value = settings.lanKey || "";
         $("sortMode").value = settings.sortMode || "status";
         $("sortDir").value = settings.sortDir || "desc";
@@ -503,11 +504,8 @@
         renderSizeHint();
         window.hud.update({ baseScale: v });
       });
-      $("lanBroadcast").addEventListener("change", (e) =>
-        window.hud.update({ lanBroadcast: e.target.checked })
-      );
-      $("lanListen").addEventListener("change", (e) =>
-        window.hud.update({ lanListen: e.target.checked })
+      $("lanMode").addEventListener("change", (e) =>
+        window.hud.update({ lanMode: e.target.value })
       );
       $("lanKey").addEventListener("change", (e) =>
         window.hud.update({ lanKey: e.target.value })
