@@ -456,6 +456,15 @@ function buildTray() {
       click: (item) => updateSettings({ hoverOpaque: item.checked }),
     },
     { label: "Reload overlay", click: () => win && win.reload() },
+    {
+      // Full process relaunch (main + net engine + tray), unlike "Reload
+      // overlay" which only refreshes the renderer window.
+      label: "Restart",
+      click: () => {
+        app.relaunch();
+        app.quit();
+      },
+    },
     { type: "separator" },
     { label: "Quit", click: () => app.quit() },
   ]);
